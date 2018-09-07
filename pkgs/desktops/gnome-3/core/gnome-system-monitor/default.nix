@@ -22,9 +22,6 @@ stdenv.mkDerivation rec {
     gnome3.gsettings-desktop-schemas systemd
   ];
 
-  # fails to build without --enable-static
-  # mesonFlags = ["--enable-systemd" "--enable-static"];
-
   enableParallelBuilding = true;
 
   postPatch = ''
