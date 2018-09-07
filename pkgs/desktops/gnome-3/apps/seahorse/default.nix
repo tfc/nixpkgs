@@ -1,7 +1,7 @@
-{ stdenv, intltool, fetchurl, vala
-, pkgconfig, gtk3, glib
+{ stdenv, intltool, fetchurl, vala, meson, ninja
+, pkgconfig, gtk3, glib, gobjectIntrospection
 , wrapGAppsHook, itstool, gnupg, libsoup
-, gnome3, gpgme
+, gnome3, gpgme, python3, openldap
 , libsecret, avahi, p11-kit, openssh }:
 
 let
@@ -19,13 +19,24 @@ in stdenv.mkDerivation rec {
 
   NIX_CFLAGS_COMPILE = "-I${gnome3.glib.dev}/include/gio-unix-2.0";
 
-  nativeBuildInputs = [ pkgconfig vala intltool itstool wrapGAppsHook ];
+  nativeBuildInputs = [
+    meson ninja pkgconfig vala intltool itstool wrapGAppsHook
+    python3 gobjectIntrospection
+  ];
   buildInputs = [
     gtk3 glib gnome3.gcr
     gnome3.gsettings-desktop-schemas gnupg
     gnome3.defaultIconTheme gpgme
     libsecret avahi libsoup p11-kit
-    openssh
+    openssh openldap
+  ];
+
+  postPatch = ''
+    patchShebangs build-aux/
+  '';
+
+  mesonFlags = [
+    "-Dpkcs11-support=false"
   ];
 
   passthru = {
