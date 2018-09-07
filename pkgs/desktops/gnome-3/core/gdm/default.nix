@@ -1,7 +1,7 @@
 { stdenv, fetchurl, substituteAll, pkgconfig, glib, itstool, libxml2, xorg
 , accountsservice, libX11, gnome3, systemd, autoreconfHook
 , gtk, libcanberra-gtk3, pam, libtool, gobjectIntrospection, plymouth
-, librsvg, coreutils, xwayland }:
+, librsvg, coreutils, xwayland, fetchpatch }:
 
 stdenv.mkDerivation rec {
   name = "gdm-${version}";
@@ -24,6 +24,7 @@ stdenv.mkDerivation rec {
     "--enable-gdm-xsession"
     "--with-initial-vt=7"
     "--with-systemdsystemunitdir=$(out)/etc/systemd/system"
+    "--with-udevdir=$(out)/lib/udev"
   ];
 
   nativeBuildInputs = [ pkgconfig libxml2 itstool autoreconfHook libtool gnome3.dconf ];
@@ -37,6 +38,11 @@ stdenv.mkDerivation rec {
 
   # Disable Access Control because our X does not support FamilyServerInterpreted yet
   patches = [
+    # configurable udev dir
+    (fetchpatch {
+      url = https://gitlab.gnome.org/GNOME/gdm/commit/ef231c2790e7a3bbee3f09ac4a125e28e95011b4.patch;
+      sha256 = "0nn409l1pb502ncza3bic4krabxvx6kp2wl2cjpcmnpqrpyjkq8v";
+    })
     (substituteAll {
       src = ./fix-paths.patch;
       inherit coreutils plymouth xwayland;
