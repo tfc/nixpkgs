@@ -20,15 +20,6 @@ in stdenv.mkDerivation rec {
     sha256 = "0gvq7gvg3cim8p4l1qrwclq3z3cax7prskg36fri7iw10qzbzrk3";
   };
 
-  patches = [
-    # Fix locale path to allow split outputs
-    # https://gitlab.gnome.org/GNOME/gucharmap/issues/10
-    (fetchpatch {
-      url = https://gitlab.gnome.org/GNOME/gucharmap/commit/b2b03f16aa869ac0ec1a05c55c4d4e4c4b513576.patch;
-      sha256 = "1543mcyz96x23m9pzx04ny15m4a2pqmiksl1y5r51k3sw4fyisci";
-    })
-  ];
-
   nativeBuildInputs = [
     pkgconfig wrapGAppsHook unzip intltool itstool
     autoconf automake libtool gtk-doc docbook_xsl docbook_xml_dtd_412
