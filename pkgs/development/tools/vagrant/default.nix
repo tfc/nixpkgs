@@ -24,7 +24,8 @@ let
         };
         inherit version;
       };
-    } // lib.optionalAttrs withLibvirt (import ./gemset_libvirt.nix));
+    } // lib.optionalAttrs withLibvirt (import ./gemset_libvirt.nix))
+    // import ./gemset_vagrant-reload.nix;
   };
 
 in buildRubyGem rec {
@@ -68,6 +69,9 @@ in buildRubyGem rec {
 
     mkdir -p "$out/vagrant-plugins/plugins.d"
     echo '{}' > "$out/vagrant-plugins/plugins.json"
+    substitute ${./vagrant-reload.json.in} $out/vagrant-plugins/plugins.d/vagrant-reload.json \
+      --subst-var-by ruby_version ${ruby.version} \
+      --subst-var-by vagrant_version ${version}
   '' +
   lib.optionalString withLibvirt ''
     substitute ${./vagrant-libvirt.json.in} $out/vagrant-plugins/plugins.d/vagrant-libvirt.json \
