@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 from xml.sax.saxutils import XMLGenerator
+import atexit
 import _thread
 import os
 import pty
@@ -56,7 +57,7 @@ def create_vlan(vlan_nr):
     # an if not, dies. we could hang here forever. Fix it.
     vde_process.stdout.readline()
     if not os.path.exists(os.path.join(vde_socket, 'ctl')):
-        raise Exception("cannot start vde_switch")
+        raise Exception('cannot start vde_switch')
 
     return (vlan_nr, vde_socket, vde_process, fd)
 
@@ -75,9 +76,6 @@ class Logger:
         self.xml.endElement('logfile')
         self.xml.endDocument()
         self.logfile_handle.close()
-
-        file = open(self.logfile, 'r')
-        print(file.read())
 
     def sanitise(self, message):
         return "".join(ch for ch in message
@@ -117,7 +115,7 @@ class Logger:
         eprint(self.maybe_prefix(message, attributes))
         print(message)
 
-        self.xml.startElement('nest', attributes)
+        self.xml.startElement('nest', attrs={})
         self.xml.startElement('head', attributes)
         self.xml.characters(message)
         self.xml.endElement('head')
@@ -130,7 +128,7 @@ class Logger:
     def nest_exit(self, tic):
         self.drain_log_queue()
         toc = time.time()
-        self.log("({:.2f} seconds)".format(toc - tic))
+        self.log('({:.2f} seconds)'.format(toc - tic))
 
         self.xml.endElement('nest')
 
@@ -159,7 +157,7 @@ class Machine:
         self.shared_dir = shared_dir
         self.booted = False
         self.connected = False
-        self.pid = 0
+        self.pid = None
         self.socket = None
         self.monitor = None
         self.logger = log
@@ -286,7 +284,7 @@ class Machine:
             sys.stdout.flush()
             self.process.wait()
 
-            self.pid = 0
+            self.pid = None
             self.booted = False
             self.connected = False
 
@@ -350,13 +348,14 @@ class Machine:
             filename = os.path.join(out_dir, '{}.png'.format(filename))
         tmp = '{}.ppm'.format(filename)
 
-        print('making screenshot {}'.format(filename))
-        self.send_monitor_command('screendump {}'.format(tmp))
-        ret = subprocess.run('pnmtopng {} > {}'.format(tmp, filename),
-                             shell=True)
-        os.unlink(tmp)
-        if ret.returncode != 0:
-            raise Exception('Cannot convert screenshot')
+        with self.nested('making screenshot {}'.format(filename),
+                         {'image': os.path.basename(filename)}):
+            self.send_monitor_command('screendump {}'.format(tmp))
+            ret = subprocess.run('pnmtopng {} > {}'.format(tmp, filename),
+                                 shell=True)
+            os.unlink(tmp)
+            if ret.returncode != 0:
+                raise Exception('Cannot convert screenshot')
 
     def send_key(self, key):
         key = CHAR_TO_KEY.get(key, key)
@@ -427,6 +426,13 @@ class Machine:
 
         self.log('QEMU running (pid {})'.format(self.pid))
 
+    def shutdown(self):
+        if self.booted:
+            return
+
+        self.shell.send('poweroff\n'.encode())
+        self.wait_for_shutdown()
+
 
 log = Logger()
 
@@ -453,8 +459,6 @@ vde_sockets = [create_vlan(v) for v in vlan_nrs]
 for nr, vde_socket, _, _ in vde_sockets:
     os.environ['QEMU_VDE_SOCKET_{}'.format(nr)] = vde_socket
 
-sys.stdout.flush()
-
 vm_scripts = sys.argv[1:]
 
 machines = [create_machine(s) for s in vm_scripts]
@@ -464,9 +468,15 @@ exec('\n'.join(machine_eval))
 
 
 def start_all():
-    with log.nested("starting all VMs"):
+    with log.nested('starting all VMs'):
         for machine in machines:
             machine.start()
+
+
+def join_all():
+    with log.nested('waiting for all VMs to finish'):
+        for machine in machines:
+            machine.wait_for_shutdown()
 
 
 def run_tests():
@@ -515,9 +525,19 @@ class subtest:
 nr_tests = 0
 nr_succeeded = 0
 
+
+@atexit.register
+def clean_up():
+    with log.nested('cleaning up'):
+        for machine in machines:
+            if machine.pid is None:
+                continue
+            log.log('killing {} (pid {})'.format(machine.name, machine.pid))
+            machine.process.kill()
+
+    log.close()
+
 tic = time.time()
 run_tests()
 toc = time.time()
-print("test script finished in {:.2f}s".format(toc - tic))
-
-log.close()
+print('test script finished in {:.2f}s'.format(toc - tic))
