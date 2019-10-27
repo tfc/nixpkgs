@@ -7,7 +7,7 @@ with import ../lib/testing.nix { inherit system pkgs; };
 
 let
 
-  makeTest = import ./make-test.nix;
+  makeTest = import ./make-test-python.nix;
 
   makeZfsTest = name:
     { kernelPackage ? pkgs.linuxPackages_latest
@@ -34,29 +34,29 @@ let
         };
 
       testScript = ''
-        $machine->succeed("modprobe zfs");
-        $machine->succeed("zpool status");
+        machine.succeed('modprobe zfs')
+        machine.succeed('zpool status')
 
-        $machine->succeed("ls /dev");
+        machine.succeed('ls /dev')
 
-        $machine->succeed(
-          "mkdir /tmp/mnt",
+        machine.succeed(
+          'mkdir /tmp/mnt',
 
-          "udevadm settle",
-          "parted --script /dev/vdb mklabel msdos",
-          "parted --script /dev/vdb -- mkpart primary 1024M -1s",
-          "udevadm settle",
+          'udevadm settle',
+          'parted --script /dev/vdb mklabel msdos',
+          'parted --script /dev/vdb -- mkpart primary 1024M -1s',
+          'udevadm settle',
 
-          "zpool create rpool /dev/vdb1",
-          "zfs create -o mountpoint=legacy rpool/root",
-          "mount -t zfs rpool/root /tmp/mnt",
-          "udevadm settle",
+          'zpool create rpool /dev/vdb1',
+          'zfs create -o mountpoint=legacy rpool/root',
+          'mount -t zfs rpool/root /tmp/mnt',
+          'udevadm settle',
 
-          "umount /tmp/mnt",
-          "zpool destroy rpool",
-          "udevadm settle"
+          'umount /tmp/mnt',
+          'zpool destroy rpool',
+          'udevadm settle'
 
-        );
+        )
 
       '' + extraTest;
 
@@ -70,16 +70,16 @@ in {
   unstable = makeZfsTest "unstable" {
     enableUnstable = true;
     extraTest = ''
-      $machine->succeed(
-        "echo password | zpool create -o altroot='/tmp/mnt' -O encryption=aes-256-gcm -O keyformat=passphrase rpool /dev/vdb1",
-        "zfs create -o mountpoint=legacy rpool/root",
-        "mount -t zfs rpool/root /tmp/mnt",
-        "udevadm settle",
+      machine.succeed(
+        'echo password | zpool create -o altroot='/tmp/mnt' -O encryption=aes-256-gcm -O keyformat=passphrase rpool /dev/vdb1',
+        'zfs create -o mountpoint=legacy rpool/root',
+        'mount -t zfs rpool/root /tmp/mnt',
+        'udevadm settle',
 
-        "umount /tmp/mnt",
-        "zpool destroy rpool",
-        "udevadm settle"
-      );
+        'umount /tmp/mnt',
+        'zpool destroy rpool',
+        'udevadm settle'
+      )
     '';
   };
 
