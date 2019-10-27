@@ -150,18 +150,39 @@ class Logger:
 
 
 class Machine:
-    def __init__(self, script, name, state_dir, shared_dir, log):
-        self.script = script
-        self.name = name
-        self.state_dir = state_dir
-        self.shared_dir = shared_dir
+    def __init__(self, args):
+        if 'name' in args:
+            self.name = args['name']
+        else:
+            try:
+                cmd = args['startCommand']
+                self.name = re.search('run-(.+)-vm$', cmd).group(1)
+            except:
+                self.name = 'machine'
+
+        self.script = args.get('startCommand', self.create_startcommand(args))
+
+        tmp_dir = os.environ.get('TMPDIR', '/tmp')
+
+        def create_dir(name):
+            dir = os.path.join(tmp_dir, name)
+            os.makedirs(dir, mode=0o700, exist_ok=True)
+            return dir
+
+        self.state_dir = create_dir('vm-state-{}'.format(self.name))
+        self.shared_dir = create_dir('xchg-shared')
+
         self.booted = False
         self.connected = False
         self.pid = None
         self.socket = None
         self.monitor = None
-        self.logger = log
-        self.allow_reboot = False
+        self.logger = args['log']
+        self.allow_reboot = args.get('allowReboot', False)
+
+    def create_startcommand(self, args):
+        # TODO: Implement
+        return None
 
     def is_up(self):
         return self.booted and self.connected
@@ -437,19 +458,11 @@ class Machine:
 log = Logger()
 
 
-def create_machine(script_path):
+def create_machine(args):
     global log
-    try:
-        name = re.search('run-(.+)-vm$', script_path).group(1)
-    except AttributeError:
-        name = 'machine'
-    tmp_dir = os.environ.get('TMPDIR', '/tmp')
-    shared_dir = os.path.join(tmp_dir, 'xchg-shared')
-    os.makedirs(shared_dir, mode=0o700, exist_ok=True)
-    state_dir = os.path.join(tmp_dir, 'vm-state-{}'.format(name))
-    os.makedirs(state_dir, mode=0o700, exist_ok=True)
-
-    return Machine(script_path, name, state_dir, shared_dir, log)
+    args['log'] = log
+    args['redirectSerial'] = os.environ.get('USE_SERIAL', '0') == '1'
+    return Machine(args)
 
 
 vlan_nrs = list(dict.fromkeys(os.environ['VLANS'].split()))
@@ -461,7 +474,7 @@ for nr, vde_socket, _, _ in vde_sockets:
 
 vm_scripts = sys.argv[1:]
 
-machines = [create_machine(s) for s in vm_scripts]
+machines = [create_machine({'startCommand' : s}) for s in vm_scripts]
 machine_eval = ['{0} = machines[{1}]'.format(m.name, idx)
                 for idx, m in enumerate(machines)]
 exec('\n'.join(machine_eval))
