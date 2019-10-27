@@ -318,21 +318,25 @@ class Machine:
                 return (status_code, output)
             output += chunk
 
-    def succeed(self, command):
-        with self.nested('must succeed: {}'.format(command)):
-            status, output = self.execute(command)
-            if status != 0:
-                self.log('output: {}'.format(output))
-                raise Exception('command `{}` did not succeed (exit code {})'
-                                .format(command, status))
-            return output
+    def succeed(self, *commands):
+        """Execute each command and check that it succeeds."""
+        for command in commands:
+            with self.nested('must succeed: {}'.format(command)):
+                status, output = self.execute(command)
+                if status != 0:
+                    self.log('output: {}'.format(output))
+                    raise Exception('command `{}` did not succeed (exit code {})'
+                                    .format(command, status))
+                return output
 
-    def fail(self, command):
-        with self.nested('must fail: {}'.format(command)):
-            status, output = self.execute(command)
-            if status == 0:
-                raise Exception('command `{}` unexpectedly succeeded'
-                                .format(command))
+    def fail(self, *commands):
+        """Execute each command and check that it fails."""
+        for command in commands:
+            with self.nested('must fail: {}'.format(command)):
+                status, output = self.execute(command)
+                if status == 0:
+                    raise Exception('command `{}` unexpectedly succeeded'
+                                    .format(command))
 
     def wait_until_succeeds(self, command):
         with self.nested('waiting for success: {}'.format(command)):
