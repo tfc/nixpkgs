@@ -540,6 +540,34 @@ class Machine:
         self.shell.send('poweroff\n'.encode())
         self.wait_for_shutdown()
 
+    def wait_for_x(self):
+        """Wait until it is possible to connect to the X server.  Note that
+        testing the existence of /tmp/.X11-unix/X0 is insufficient.
+        """
+        with self.nested('waiting for the X11 server'):
+            while True:
+                status, _ = self.execute('journalctl -b SYSLOG_IDENTIFIER=systemd | grep "Reached target Current graphical"')
+                if status != 0:
+                    continue
+                status, _ = self.execute('[ -e /tmp/.X11-unix/X0 ]')
+                if status == 0:
+                    return
+
+    def sleep(self, secs):
+        time.sleep(secs)
+
+    def block(self):
+        """Make the machine unreachable by shutting down eth1 (the multicast
+        interface used to talk to the other VMs).  We keep eth0 up so that
+        the test driver can continue to talk to the machine.
+        """
+        self.send_monitor_command('set_link virtio-net-pci.1 off')
+
+    def unblock(self):
+        """Make the machine reachable.
+        """
+        self.send_monitor_command('set_link virtio-net-pci.1 on')
+
 
 log = Logger()
 
