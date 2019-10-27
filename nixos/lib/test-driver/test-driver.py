@@ -8,9 +8,11 @@ import os
 import pty
 import queue
 import re
+import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 import unicodedata
 
@@ -60,6 +62,20 @@ def create_vlan(vlan_nr):
         raise Exception('cannot start vde_switch')
 
     return (vlan_nr, vde_socket, vde_process, fd)
+
+
+def retry(fn):
+    """Call the given function repeatedly, with 1 second intervals,
+    until it returns True or a timeout is reached.
+    """
+
+    for n in range(900):
+        if fn(False):
+            return
+        time.sleep(1)
+
+    if not fn(True):
+        raise Exception('action timed out')
 
 
 class Logger:
@@ -412,6 +428,41 @@ class Machine:
             os.unlink(tmp)
             if ret.returncode != 0:
                 raise Exception('Cannot convert screenshot')
+
+    def get_screen_text(self):
+        if shutil.which('tesseract') is None:
+            raise Exception('get_screen_text used but enableOCR is false')
+
+        magick_args = ('-filter Catrom -density 72 -resample 300 '
+                       + '-contrast -normalize -despeckle -type grayscale '
+                       + '-sharpen 1 -posterize 3 -negate -gamma 100 '
+                       + '-blur 1x65535')
+
+        tess_args = '-c debug_file=/dev/null --psm 11 --oem 2'
+
+        with self.nested('performing optical character recognition'):
+            with tempfile.NamedTemporaryFile() as tmpin:
+                self.send_monitor_command('screendump {}'.format(tmpin.name))
+
+                cmd = "convert {} {} tiff:- | tesseract - - {}".format(magick_args, tmpin.name, tess_args)
+                ret = subprocess.run(cmd, shell=True, capture_output=True)
+                if ret.returncode != 0:
+                    raise Exception('OCR failed with exit code {}'.format(ret.returncode))
+
+                return ret.stdout.decode('utf-8')
+
+    def wait_for_text(self, regex):
+        def screen_matches(last):
+            text = self.get_screen_text()
+            m = re.search(regex, text)
+
+            if last and not m:
+                self.log('Last OCR attempt failed. Text was: {}'.format(text))
+
+            return m
+
+        with self.nested('waiting for {} to appear on the screen'.format(regex)):
+            retry(screen_matches)
 
     def send_key(self, key):
         key = CHAR_TO_KEY.get(key, key)
