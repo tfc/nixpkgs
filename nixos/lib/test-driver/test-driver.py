@@ -181,8 +181,43 @@ class Machine:
         self.allow_reboot = args.get('allowReboot', False)
 
     def create_startcommand(self, args):
-        # TODO: Implement
-        return None
+        net_backend = "-netdev user,id=net0";
+        net_frontend = "-device virtio-net-pci,netdev=net0";
+
+        if 'netBackendArgs' in args:
+            net_backend += ',' + args['netBackendArgs']
+
+        if 'netFrontendArgs' in args:
+            net_frontend += ',' + args['netFrontendArgs']
+
+        start_command = ('qemu-kvm -m 384 ' + net_backend + net_frontend
+                + ' $QEMU_OPTS ')
+
+        if 'hda' in args:
+            hda_path = os.path.abspath(args['hda'])
+            if args.get('hdaInterface', '') == 'scsi':
+                start_command += ('-drive id=hda,file=' + hda_path
+                                 + ',werror=report,if=none '
+                                 + '-device scsi-hd,drive=hda ')
+            else:
+                start_command += ('-drive file=' + hda_path
+                                 + ',if=' + args['hdaInterface']
+                                 + ',werror=report ')
+
+        if 'cdrom' in args:
+            start_command += '-cdrom ' + args['cdrom'] + ' '
+
+        if 'usb' in args:
+            start_command += ('-device piix3-usb-uhci -drive '
+                             + 'id=usbdisk,file='
+                             + args['usb'] + ',if=none,readonly '
+                             + '-device usb-storage,drive=usbdisk ')
+        if 'bios' in args:
+            start_command += '-bios ' + args['bios'] + ' '
+
+        start_command += args.get('qemuFlags', '')
+
+        return start_command
 
     def is_up(self):
         return self.booted and self.connected
