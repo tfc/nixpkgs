@@ -658,6 +658,14 @@ class Machine:
                 if status == 0:
                     return
 
+    def copy_file_from_host(self, source, target):
+        """Copies the file located at source path to the target path.
+        Note: "source" is equivalent to "from", "target" is equivalent to "to" in the Perl script
+        """
+        with open(source, "r") as source_file:
+            source_content = source_file.read()
+            self.succeed("echo '{}' > {}".format(source_content, target))
+
     def sleep(self, secs):
         time.sleep(secs)
 
