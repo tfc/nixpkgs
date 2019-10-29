@@ -20,9 +20,9 @@ with pkgs.lib;
     testScript = ''
       start_all()
 
-      machine.wait_for_unit('gitea.service')
-      machine.wait_for_open_port('3000')
-      machine.succeed('curl --fail http://localhost:3000/')
+      machine.wait_for_unit("gitea.service")
+      machine.wait_for_open_port(3000)
+      machine.succeed("curl --fail http://localhost:3000/")
     '';
   };
 
@@ -39,9 +39,9 @@ with pkgs.lib;
     testScript = ''
       start_all()
 
-      machine.wait_for_unit('gitea.service')
-      machine.wait_for_open_port('3000')
-      machine.succeed('curl --fail http://localhost:3000/')
+      machine.wait_for_unit("gitea.service")
+      machine.wait_for_open_port(3000)
+      machine.succeed("curl --fail http://localhost:3000/")
     '';
   };
 
@@ -58,10 +58,12 @@ with pkgs.lib;
     testScript = ''
       start_all()
 
-      machine.wait_for_unit('gitea.service')
-      machine.wait_for_open_port('3000')
-      machine.succeed('curl --fail http://localhost:3000/')
-      machine.succeed('curl --fail http://localhost:3000/user/sign_up | grep "Registration is disabled. Please contact your site administrator."')
+      machine.wait_for_unit("gitea.service")
+      machine.wait_for_open_port(3000)
+      machine.succeed("curl --fail http://localhost:3000/")
+      machine.succeed(
+          "curl --fail http://localhost:3000/user/sign_up | grep 'Registration is disabled. Please contact your site administrator.'"
+      )
     '';
   };
 }

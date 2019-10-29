@@ -17,7 +17,7 @@ let
         ];
     }).config.system.build.isoImage;
 
-  pythonDict = params: "{ ${concatStringsSep ", " (mapAttrsToList (name: param: "'${name}': '${param}'") params)} }";
+  pythonDict = params: "\n    {\n        ${concatStringsSep ",\n        " (mapAttrsToList (name: param: "\"${name}\": \"${param}\"") params)},\n    }\n";
 
   makeBootTest = name: extraConfig:
     let
@@ -31,12 +31,12 @@ let
           ''
             machine = create_machine(${machineConfig})
             machine.start()
-            machine.wait_for_unit('multi-user.target')
-            machine.succeed('nix verify -r --no-trust /run/current-system')
+            machine.wait_for_unit("multi-user.target")
+            machine.succeed("nix verify -r --no-trust /run/current-system")
 
-            with subtest('Check whether the channel got installed correctly'):
-              machine.succeed('nix-instantiate --dry-run "<nixpkgs>" -A hello')
-              machine.succeed('nix-env --dry-run -iA nixos.procps')
+            with subtest("Check whether the channel got installed correctly"):
+                machine.succeed("nix-instantiate --dry-run '<nixpkgs>' -A hello")
+                machine.succeed("nix-env --dry-run -iA nixos.procps")
 
             machine.shutdown()
           '';
@@ -71,7 +71,7 @@ let
         testScript = ''
             machine = create_machine(${machineConfig})
             machine.start()
-            machine.wait_for_unit('multi-user.target')
+            machine.wait_for_unit("multi-user.target")
             machine.shutdown()
           '';
       };

@@ -100,26 +100,34 @@ in import ./make-test-python.nix {
       letsencrypt.start()
       acmeStandalone.start()
 
-      letsencrypt.wait_for_unit('default.target')
-      letsencrypt.wait_for_unit('pebble.service')
+      letsencrypt.wait_for_unit("default.target")
+      letsencrypt.wait_for_unit("pebble.service")
 
-      with subtest('can request certificate with HTTPS-01 challenge'):
-        acmeStandalone.wait_for_unit('default.target')
-        acmeStandalone.succeed('systemctl start acme-standalone.com.service')
-        acmeStandalone.wait_for_unit('acme-finished-standalone.com.target')
+      with subtest("can request certificate with HTTPS-01 challenge"):
+          acmeStandalone.wait_for_unit("default.target")
+          acmeStandalone.succeed("systemctl start acme-standalone.com.service")
+          acmeStandalone.wait_for_unit("acme-finished-standalone.com.target")
 
-      client.wait_for_unit('default.target')
+      client.wait_for_unit("default.target")
 
-      client.succeed('curl https://acme-v02.api.letsencrypt.org:15000/roots/0 > /tmp/ca.crt')
-      client.succeed('curl https://acme-v02.api.letsencrypt.org:15000/intermediate-keys/0 >> /tmp/ca.crt')
+      client.succeed("curl https://acme-v02.api.letsencrypt.org:15000/roots/0 > /tmp/ca.crt")
+      client.succeed(
+          "curl https://acme-v02.api.letsencrypt.org:15000/intermediate-keys/0 >> /tmp/ca.crt"
+      )
 
-      with subtest('Can request certificate for nginx service'):
-        webserver.wait_for_unit('acme-finished-a.example.com.target')
-        client.succeed('curl --cacert /tmp/ca.crt https://a.example.com/ | grep -qF "hello world"')
+      with subtest("Can request certificate for nginx service"):
+          webserver.wait_for_unit("acme-finished-a.example.com.target")
+          client.succeed(
+              "curl --cacert /tmp/ca.crt https://a.example.com/ | grep -qF 'hello world'"
+          )
 
-      with subtest('Can add another certificate for nginx service'):
-        webserver.succeed('/run/current-system/fine-tune/child-1/bin/switch-to-configuration test')
-        webserver.wait_for_unit('acme-finished-b.example.com.target')
-        client.succeed('curl --cacert /tmp/ca.crt https://b.example.com/ | grep -qF "hello world"')
+      with subtest("Can add another certificate for nginx service"):
+          webserver.succeed(
+              "/run/current-system/fine-tune/child-1/bin/switch-to-configuration test"
+          )
+          webserver.wait_for_unit("acme-finished-b.example.com.target")
+          client.succeed(
+              "curl --cacert /tmp/ca.crt https://b.example.com/ | grep -qF 'hello world'"
+          )
     '';
 }

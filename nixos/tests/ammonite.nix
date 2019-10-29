@@ -15,6 +15,6 @@ import ./make-test-python.nix ({ pkgs, ...} : {
   testScript = ''
     start_all()
 
-    amm.succeed('amm -c "val foo = 21; println(foo * 2)" | grep 42')
+    amm.succeed("amm -c 'val foo = 21; println(foo * 2)' | grep 42")
   '';
 })
