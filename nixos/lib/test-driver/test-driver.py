@@ -285,10 +285,15 @@ class Machine:
         return self.logger.nested(msg, my_attrs)
 
     def wait_for_monitor_prompt(self):
+        answer = ""
         while True:
-            answer = self.monitor.recv(1024).decode()
+            undecoded_answer = self.monitor.recv(1024)
+            if not undecoded_answer:
+                break
+            answer += undecoded_answer.decode()
             if answer.endswith("(qemu) "):
-                return answer
+                break
+        return answer
 
     def send_monitor_command(self, command):
         message = ("{}\n".format(command)).encode()
