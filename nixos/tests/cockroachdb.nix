@@ -110,13 +110,9 @@ in import ./make-test-python.nix ({ pkgs, ...} : {
   # there's otherwise no way to guarantee that node1 will start before the others try
   # to join it.
   testScript = ''
-    node1.start()
+    start_all()
     node1.wait_for_unit("cockroachdb")
-
-    node2.start()
     node2.wait_for_unit("cockroachdb")
-
-    node3.start()
     node3.wait_for_unit("cockroachdb")
 
     node1.succeed(
