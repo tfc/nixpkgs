@@ -95,7 +95,7 @@ let
       '';
     };
 
-in import ./make-test.nix ({ pkgs, ...} : {
+in import ./make-test-python.nix ({ pkgs, ...} : {
   name = "cockroachdb";
   meta.maintainers = with pkgs.stdenv.lib.maintainers;
     [ thoughtpolice ];
@@ -110,17 +110,23 @@ in import ./make-test.nix ({ pkgs, ...} : {
   # there's otherwise no way to guarantee that node1 will start before the others try
   # to join it.
   testScript = ''
-    $node1->start;
-    $node1->waitForUnit("cockroachdb");
+    node1.start()
+    node1.wait_for_unit("cockroachdb")
 
-    $node2->start;
-    $node2->waitForUnit("cockroachdb");
+    node2.start()
+    node2.wait_for_unit("cockroachdb")
 
-    $node3->start;
-    $node3->waitForUnit("cockroachdb");
+    node3.start()
+    node3.wait_for_unit("cockroachdb")
 
-    $node1->mustSucceed("cockroach sql --host=192.168.1.1 --insecure -e 'SHOW ALL CLUSTER SETTINGS' 2>&1");
-    $node1->mustSucceed("cockroach workload init bank 'postgresql://root\@192.168.1.1:26257?sslmode=disable'");
-    $node1->mustSucceed("cockroach workload run bank --duration=1m 'postgresql://root\@192.168.1.1:26257?sslmode=disable'");
+    node1.succeed(
+        "cockroach sql --host=192.168.1.1 --insecure -e 'SHOW ALL CLUSTER SETTINGS' 2>&1"
+    )
+    node1.succeed(
+        "cockroach workload init bank 'postgresql://root@192.168.1.1:26257?sslmode=disable'"
+    )
+    node1.succeed(
+        "cockroach workload run bank --duration=1m 'postgresql://root@192.168.1.1:26257?sslmode=disable'"
+    )
   '';
 })
