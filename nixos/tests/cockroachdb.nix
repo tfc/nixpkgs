@@ -110,19 +110,14 @@ in import ./make-test-python.nix ({ pkgs, ...} : {
   # there's otherwise no way to guarantee that node1 will start before the others try
   # to join it.
   testScript = ''
-    start_all()
-    node1.wait_for_unit("cockroachdb")
-    node2.wait_for_unit("cockroachdb")
-    node3.wait_for_unit("cockroachdb")
+    for node in node1, node2, node3:
+        node.start()
+        node.wait_for_unit("cockroachdb")
 
     node1.succeed(
-        "cockroach sql --host=192.168.1.1 --insecure -e 'SHOW ALL CLUSTER SETTINGS' 2>&1"
-    )
-    node1.succeed(
-        "cockroach workload init bank 'postgresql://root@192.168.1.1:26257?sslmode=disable'"
-    )
-    node1.succeed(
-        "cockroach workload run bank --duration=1m 'postgresql://root@192.168.1.1:26257?sslmode=disable'"
+        "cockroach sql --host=192.168.1.1 --insecure -e 'SHOW ALL CLUSTER SETTINGS' 2>&1",
+        "cockroach workload init bank 'postgresql://root@192.168.1.1:26257?sslmode=disable'",
+        "cockroach workload run bank --duration=1m 'postgresql://root@192.168.1.1:26257?sslmode=disable'",
     )
   '';
 })
