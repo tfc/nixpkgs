@@ -44,6 +44,7 @@ with import ../../lib/qemu-flags.nix { inherit pkgs; };
     # with EIO).  Likewise for hvc0.
     systemd.services."serial-getty@${qemuSerialDevice}".enable = false;
     systemd.services."serial-getty@hvc0".enable = false;
+    systemd.services."serial-getty@hvc1".enable = true;
 
     # Only set these settings when the options exist. Some tests (e.g. those
     # that do not specify any nodes, or an empty attr set as nodes) will not
@@ -57,7 +58,7 @@ with import ../../lib/qemu-flags.nix { inherit pkgs; };
         #       we avoid defining consoles if not possible.
         # TODO: refactor such that test-instrumentation can import qemu-vm
         #       or declare virtualisation.qemu.console option in a module that's always imported
-        consoles = [ qemuSerialDevice ];
+        consoles = [ qemuSerialDevice "hvc1" ];
         package  = lib.mkDefault pkgs.qemu_test;
       };
     };
@@ -93,12 +94,13 @@ with import ../../lib/qemu-flags.nix { inherit pkgs; };
     # `xwininfo' is used by the test driver to query open windows.
     environment.systemPackages = [ pkgs.xorg.xwininfo ];
 
-    # Log everything to the serial console.
+    # Log everything to the first serial console only.
     services.journald.extraConfig =
       ''
         ForwardToConsole=yes
         MaxLevelConsole=debug
-      '';
+        TTYPath=/dev/ttyS0
+     '';
 
     systemd.extraConfig = ''
       # Don't clobber the console with duplicate systemd messages.

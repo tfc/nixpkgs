@@ -24,6 +24,9 @@ import tempfile
 import time
 import traceback
 import unicodedata
+import libtmux
+import os
+
 
 CHAR_TO_KEY = {
     "A": "shift-a",
@@ -91,6 +94,10 @@ CHAR_TO_KEY = {
 # Forward references
 log: "Logger"
 machines: "List[Machine]"
+
+
+def with_tmux() -> bool:
+    return "TMUX_SOCKET" in os.environ
 
 
 def eprint(*args: object, **kwargs: Any) -> None:
@@ -238,6 +245,16 @@ class Machine:
         self.socket = None
         self.monitor: Optional[socket.socket] = None
         self.allow_reboot = args.get("allowReboot", False)
+
+        if with_tmux():
+            self.log_file_name = os.path.join(tmp_dir, f"vm-log-{self.name}")
+            self.log_file = open(self.log_file_name, "w")
+
+            self.tmux_session: Any = None
+            # The tmux window associated to this machine. This window
+            # initally contains a pane with the log and another pane with
+            # a terminal.
+            self.tmux_window: Any = None
 
     @staticmethod
     def create_startcommand(args: Dict[str, str]) -> str:
@@ -719,6 +736,24 @@ class Machine:
         shell_path = os.path.join(self.state_dir, "shell")
         self.shell_socket = create_socket(shell_path)
 
+        if with_tmux():
+            self.tmux_window = self.tmux_session.new_window(
+                window_name=f"{self.name}",
+                attach=False,
+                window_shell=f"tail -f {self.log_file_name}",
+            )
+            pane = self.tmux_window.split_window(
+                attach=True, shell="tty; sleep 10d", percent=70
+            )
+            tty = pane.capture_pane()[0]
+
+            qemu_tmux_options = " ".join(
+                [
+                    "-chardev tty,id=console,path={}".format(tty),
+                    "-device virtconsole,chardev=console",
+                ]
+            )
+
         qemu_options = (
             " ".join(
                 [
@@ -729,6 +764,7 @@ class Machine:
                     "-device virtconsole,chardev=shell",
                     "-device virtio-rng-pci",
                     "-serial stdio" if "DISPLAY" in os.environ else "-nographic",
+                    qemu_tmux_options if with_tmux() else "",
                 ]
             )
             + " "
@@ -767,7 +803,11 @@ class Machine:
                 # Ignore undecodable bytes that may occur in boot menus
                 line = _line.decode(errors="ignore").replace("\r", "").rstrip()
                 self.last_lines.put(line)
-                eprint("{} # {}".format(self.name, line))
+                if with_tmux():
+                    self.log_file.write("{}\n".format(line))
+                    self.log_file.flush()
+                else:
+                    eprint("{} # {}".format(self.name, line))
                 self.logger.enqueue({"msg": line, "machine": self.name})
 
         _thread.start_new_thread(process_serial_output, ())
@@ -924,6 +964,18 @@ def subtest(name: str) -> Iterator[None]:
     return False
 
 
+def init_tmux(machines: List[Machine]) -> Any:
+    server = libtmux.Server(socket_path=os.environ["TMUX_SOCKET"])
+    session = server.list_sessions()[0]
+
+    print("Available machines in this test:")
+    for m in machines:
+        print(f"  {m.name}")
+        m.tmux_session = session
+
+    return session
+
+
 if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument(
@@ -948,12 +1000,18 @@ if __name__ == "__main__":
     machine_eval = [
         "{0} = machines[{1}]".format(m.name, idx) for idx, m in enumerate(machines)
     ]
+
+    if with_tmux():
+        tmux_session = init_tmux(machines)
+
     exec("\n".join(machine_eval))
 
     @atexit.register
     def clean_up() -> None:
         with log.nested("cleaning up"):
             for machine in machines:
+                if with_tmux() and machine.tmux_window is not None:
+                    tmux_session.kill_window(target_window=machine.tmux_window.name)
                 if machine.pid is None:
                     continue
                 log.log("killing {} (pid {})".format(machine.name, machine.pid))

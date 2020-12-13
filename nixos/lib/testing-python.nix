@@ -25,7 +25,7 @@ rec {
       name = "nixos-test-driver";
 
       nativeBuildInputs = [ makeWrapper ];
-      buildInputs = [ (python3.withPackages (p: [ p.ptpython ])) ];
+      buildInputs = [ (python3.withPackages (p: [ p.ptpython p.libtmux ])) ];
       checkInputs = with python3Packages; [ pylint black mypy ];
 
       dontUnpack = true;
@@ -91,6 +91,32 @@ rec {
       ocrProg = tesseract4.override { enableLanguages = [ "eng" ]; };
 
       imagemagick_tiff = imagemagick_light.override { inherit libtiff; };
+
+      # This starts the test driver in a tmux session. The python test
+      # driver detects tmux thanks to the unix socket $TMUX_SOCKET
+      tmuxWrapper = pkgs.writers.writeBash "tmux-wrapper" ''
+        export TMUX_SOCKET=/tmp/tmux-test-driver-${name}.sock
+        if [ -e $TMUX_SOCKET ] && ${pkgs.tmux}/bin/tmux -S $TMUX_SOCKET list-sessions >/dev/null 2>&1
+        then
+          echo "The tmux socket $TMUX_SOCKET already exists. Attaching to it..."
+          ${pkgs.tmux}/bin/tmux -S $TMUX_SOCKET attach
+        else
+          # This is to make it available for the Python libtmux used by
+          # the test driver.
+          export PATH=${pkgs.tmux}/bin:$PATH
+
+          echo "Creating a new tmux session on socket $TMUX_SOCKET"
+          ${pkgs.tmux}/bin/tmux -S $TMUX_SOCKET new-session $@
+        fi
+
+        if [ -e $TMUX_SOCKET ] && ${pkgs.tmux}/bin/tmux -S $TMUX_SOCKET list-sessions >/dev/null 2>&1
+        then
+          echo "The tmux session is still alive and can be attached by running the test script"
+          echo "  or by running ${pkgs.tmux}/bin/tmux -S $TMUX_SOCKET attach"
+        else
+          echo "The tmux session has been killed."
+        fi
+      '';
 
       # Generate convenience wrappers for running the test driver
       # interactively with the specified network, and for starting the
@@ -164,6 +190,9 @@ rec {
               --set tests 'start_all(); join_all();' \
               --set VLANS '${toString vlans}' \
               ${lib.optionalString (builtins.length vms == 1) "--set USE_SERIAL 1"}
+
+            echo ${tmuxWrapper} $out/bin/nixos-test-driver > $out/bin/nixos-test-tmux-driver
+            chmod a+x $out/bin/nixos-test-tmux-driver
           ''); # "
 
       passMeta = drv: drv // lib.optionalAttrs (t ? meta) {
