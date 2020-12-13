@@ -121,15 +121,30 @@ rec {
       # Generate convenience wrappers for running the test driver
       # interactively with the specified network, and for starting the
       # VMs from the command line.
-      mkDriver = qemu_pkg:
+      mkDriver = { qemu_pkg ? null, with_tmux ? false }:
         let
           build-vms = import ./build-vms.nix {
             inherit system pkgs minimal specialArgs;
-            extraConfigurations = extraConfigurations ++ (pkgs.lib.optional (qemu_pkg != null)
-              {
-                virtualisation.qemu.package = qemu_pkg;
-              }
-            );
+            extraConfigurations = extraConfigurations
+              ++ (pkgs.lib.optional (qemu_pkg != null)
+                {
+                  virtualisation.qemu.package = qemu_pkg;
+                })
+              ++ (pkgs.lib.optional with_tmux
+                {
+                  services.mingetty.autologinUser = "root";
+                  environment = {
+                    # for resize command
+                    systemPackages = [ pkgs.xterm ];
+                    loginShellInit = let
+                      term = builtins.getEnv "TERM";
+                    in ''
+                      # fix terminal size
+                      eval "$(resize)"
+                      ${lib.optionalString (term != "") "export TERM='${term}'"}
+                    '';
+                  };
+                });
           };
 
           # FIXME: get this pkg from the module system
@@ -167,7 +182,7 @@ rec {
               inherit nodes;
             };
           }
-          ''
+          (''
             mkdir -p $out/bin
 
             echo -n "$testScript" > $out/test-script
@@ -190,17 +205,20 @@ rec {
               --set tests 'start_all(); join_all();' \
               --set VLANS '${toString vlans}' \
               ${lib.optionalString (builtins.length vms == 1) "--set USE_SERIAL 1"}
-
+            ''
+          + (lib.optionalString with_tmux ''
             echo ${tmuxWrapper} $out/bin/nixos-test-driver > $out/bin/nixos-test-tmux-driver
             chmod a+x $out/bin/nixos-test-tmux-driver
-          ''); # "
+          ''))
+        ); # "
 
       passMeta = drv: drv // lib.optionalAttrs (t ? meta) {
         meta = (drv.meta or { }) // t.meta;
       };
 
-      driver = mkDriver null;
-      driverInteractive = mkDriver pkgs.qemu;
+      driver = mkDriver {};
+      driverInteractive = mkDriver { qemu_pkg = pkgs.qemu; };
+      driverInteractiveTmux = mkDriver { with_tmux = true; };
 
       test = passMeta (runTests driver);
 
@@ -220,7 +238,7 @@ rec {
       ''
     else
       test // {
-        inherit test driver driverInteractive;
+        inherit test driver driverInteractive driverInteractiveTmux;
         inherit (driver) nodes;
       };
 
