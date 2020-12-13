@@ -21,11 +21,16 @@ rec {
     let
       testDriverScript = ./test-driver/test-driver.py;
     in
-    qemu_pkg: stdenv.mkDerivation {
+    qemu_pkg: with_tmux: stdenv.mkDerivation {
       name = "nixos-test-driver";
 
       nativeBuildInputs = [ makeWrapper ];
-      buildInputs = [ (python3.withPackages (p: [ p.ptpython p.libtmux ])) ];
+      buildInputs = [
+        (python3.withPackages (p:
+          [ p.ptpython ]
+          ++ (pkgs.lib.optional with_tmux p.libtmux)
+        ))
+      ];
       checkInputs = with python3Packages; [ pylint black mypy ];
 
       dontUnpack = true;
@@ -148,7 +153,7 @@ rec {
           };
 
           # FIXME: get this pkg from the module system
-          testDriver = mkTestDriver (if qemu_pkg == null then pkgs.qemu_test else qemu_pkg);
+          testDriver = mkTestDriver (if qemu_pkg == null then pkgs.qemu_test else qemu_pkg) with_tmux;
 
           nodes = build-vms.buildVirtualNetwork (
             t.nodes or (if t ? machine then { machine = t.machine; } else { })
@@ -302,7 +307,7 @@ rec {
         unset xchg
 
         export tests='${testScript}'
-        ${mkTestDriver qemu}/bin/nixos-test-driver --keep-vm-state ${vm.config.system.build.vm}/bin/run-*-vm
+        ${mkTestDriver qemu false}/bin/nixos-test-driver --keep-vm-state ${vm.config.system.build.vm}/bin/run-*-vm
       ''; # */
 
     in

@@ -24,7 +24,6 @@ import tempfile
 import time
 import traceback
 import unicodedata
-import libtmux
 import os
 
 
@@ -98,6 +97,13 @@ machines: "List[Machine]"
 
 def with_tmux() -> bool:
     return "TMUX_SOCKET" in os.environ
+
+
+# The libtmux Python module is not available in the closure of the
+# driver used to run tests non interactively (to reduce its closure
+# size).
+if with_tmux():
+    import libtmux  # pylint: disable=import-error
 
 
 def eprint(*args: object, **kwargs: Any) -> None:
