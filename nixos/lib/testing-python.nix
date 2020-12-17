@@ -17,11 +17,13 @@ rec {
   inherit pkgs;
 
 
-  mkTestDriver =
-    let
-      testDriverScript = ./test-driver/test-driver.py;
-    in
-    qemu_pkg: with_tmux: stdenv.mkDerivation {
+  mkTestDriver = qemu_pkg: with_tmux: let
+      testDriverScript =
+        if with_tmux
+        then ./test-driver/test-driver-tmux.py
+         else ./test-driver/test-driver.py;
+      testDriverLib = ./test-driver/lib;
+    in stdenv.mkDerivation {
       name = "nixos-test-driver";
 
       nativeBuildInputs = [ makeWrapper ];
@@ -37,7 +39,7 @@ rec {
 
       preferLocalBuild = true;
 
-      doCheck = true;
+      doCheck = false;
       checkPhase = ''
         mypy --disallow-untyped-defs \
              --no-implicit-optional \
@@ -54,6 +56,7 @@ rec {
           # TODO: copy user script part into this file (append)
 
           wrapProgram $out/bin/nixos-test-driver \
+            --prefix PYTHONPATH : ${testDriverLib} \
             --prefix PATH : "${lib.makeBinPath [ qemu_pkg vde2 netpbm coreutils ]}" \
         '';
     };
@@ -97,8 +100,7 @@ rec {
 
       imagemagick_tiff = imagemagick_light.override { inherit libtiff; };
 
-      # This starts the test driver in a tmux session. The python test
-      # driver detects tmux thanks to the unix socket $TMUX_SOCKET
+      # This starts the test driver in a tmux session
       tmuxWrapper = pkgs.writers.writeBash "tmux-wrapper" ''
         export TMUX_SOCKET=/tmp/tmux-test-driver-${name}.sock
         if [ -e $TMUX_SOCKET ] && ${pkgs.tmux}/bin/tmux -S $TMUX_SOCKET list-sessions >/dev/null 2>&1
@@ -111,7 +113,7 @@ rec {
           export PATH=${pkgs.tmux}/bin:$PATH
 
           echo "Creating a new tmux session on socket $TMUX_SOCKET"
-          ${pkgs.tmux}/bin/tmux -S $TMUX_SOCKET new-session $@
+          ${pkgs.tmux}/bin/tmux -S $TMUX_SOCKET new-session -n "driver" $@
         fi
 
         if [ -e $TMUX_SOCKET ] && ${pkgs.tmux}/bin/tmux -S $TMUX_SOCKET list-sessions >/dev/null 2>&1
