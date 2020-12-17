@@ -225,7 +225,7 @@ rec {
 
       driver = mkDriver {};
       driverInteractive = mkDriver { qemu_pkg = pkgs.qemu; };
-      driverInteractiveTmux = mkDriver { with_tmux = true; };
+      driverInteractiveTmux = mkDriver { qemu_pkg = pkgs.qemu; with_tmux = true; };
 
       test = passMeta (runTests driver);
 
