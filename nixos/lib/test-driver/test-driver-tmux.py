@@ -15,27 +15,20 @@ class MachineTmux(machine.Machine):
         server = libtmux.Server(socket_path=os.environ["TMUX_SOCKET"])
         self.tmux_session = server.list_sessions()[0]
 
-        self.log_file_name = os.path.join(self.tmp_dir, f"vm-log-{self.name}")
-        self.log_file = open(self.log_file_name, "w")
+        log_file_name = os.path.join(self.tmp_dir, f"vm-log-{self.name}")
+        self.log_file = open(log_file_name, "w")
         
-        # The tmux window associated to this machine. This window
-        # initally contains a pane with the log and another pane with
-        # a terminal.
-        self.tmux_window: Any = None
-
-    def start(self):
-        if self.tmux_window == None:
-            self.tmux_window = self.tmux_session.new_window(
-                window_name=f"{self.name}",
-                attach=False,
-                window_shell=f"tail -f {self.log_file_name}",
-            )
-            pane = self.tmux_window.split_window(
-                attach=True, shell="tty; sleep 10d", percent=70
-            )
-            self._tty = pane.capture_pane()[0]
-        
-        machine.Machine.start(self)
+        self.tmux_window = self.tmux_session.new_window(
+            window_name=f"{self.name}",
+            attach=False,
+            window_shell=f"echo 'The machine {self.name} has not been started yet'; tail -f {log_file_name}",
+        )
+        pane = self.tmux_window.split_window(
+            attach=True, shell="tty; sleep 10d", percent=70
+        )
+        # This is to get the tty device printed by the above tty
+        # command
+        self._tty = pane.capture_pane()[0]
 
     def tty(self):
         return self._tty
