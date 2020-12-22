@@ -33,16 +33,10 @@ import machine
 def test_script() -> None:
     exec(os.environ["testScript"])
 
-def machine_name_from_script(command: str) -> str:
-    match = re.search("run-(.+)-vm$", command)
-    if match:
-        return match.group(1)
-    return None
-
 
 class Driver():
     def __init__(self, machine_class, log, vm_scripts, keep_vm_state,
-                 configure_python_repl=id):
+            configure_python_repl=id, machine_config_modifier=lambda x: x):
         """
         Args:
             - configure_python_repl: a function to configure the ptpython.repl
@@ -52,23 +46,31 @@ o        """
         self.vm_scripts = vm_scripts
         self.configure_python_repl = configure_python_repl
 
+        tmp_dir = os.environ.get("TMPDIR", tempfile.gettempdir())
+        os.makedirs(tmp_dir, mode=0o700, exist_ok=True)
+
         vlan_nrs = list(dict.fromkeys(os.environ.get("VLANS", "").split()))
         vde_sockets = [self.create_vlan(v) for v in vlan_nrs]
         for nr, vde_socket, _, _ in vde_sockets:
             os.environ["QEMU_VDE_SOCKET_{}".format(nr)] = vde_socket
 
-        self.machines = [
-            self.machine_class(
-                {
-                    "startCommand": s,
-                    "keepVmState": keep_vm_state,
-                    "name": machine_name_from_script(s),
-                    "log": self.log,
-                    "redirectSerial": os.environ.get("USE_SERIAL", "0") == "1",
-                }
-            )
-            for s in self.vm_scripts
-        ]
+        def create_machine(command):
+            name = "machine"
+            match = re.search("run-(.+)-vm$", command)
+            if match:
+                name = match.group(1)
+            args = {
+                "startCommand": command,
+                "keepVmState": keep_vm_state,
+                "name": name,
+                "redirectSerial": os.environ.get("USE_SERIAL", "0") == "1",
+                "log_serial": lambda x: print(f"[{name} LOG] {x}"),
+                "log_machinestate": lambda x: print(f"[{name} MCS] {x}"),
+                "tmp_dir": tmp_dir,
+            }
+            return self.machine_class(machine_config_modifier(args))
+
+        self.machines = [create_machine(s) for s in self.vm_scripts]
 
         @atexit.register
         def clean_up() -> None:
@@ -77,7 +79,7 @@ o        """
                     machine.release()
                 for _, _, process, _ in vde_sockets:
                     process.terminate()
-            log.close()
+            log.release()
 
     @contextmanager
     def subtest(self, name: str) -> Iterator[None]:
@@ -163,6 +165,27 @@ o        """
 
 class Logger:
     def __init__(self) -> None:
+        pass
+
+    def release(self) -> None:
+        pass
+
+    def log(self, message: str) -> None:
+        print(message)
+
+    __call__ = log
+
+    @contextmanager
+    def nested(self, message: str) -> Iterator[None]:
+        self.log(message)
+        yield
+
+
+
+class XmlLogger(Logger):
+    def __init__(self) -> None:
+        Logger.__init__(self)
+
         self.logfile = os.environ.get("LOGFILE", "/dev/null")
         self.logfile_handle = codecs.open(self.logfile, "wb")
         self.xml = XMLGenerator(self.logfile_handle, encoding="utf-8")
@@ -171,7 +194,7 @@ class Logger:
         self.xml.startDocument()
         self.xml.startElement("logfile", attrs={})
 
-    def close(self) -> None:
+    def release(self) -> None:
         self.xml.endElement("logfile")
         self.xml.endDocument()
         self.logfile_handle.close()
