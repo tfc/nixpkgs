@@ -72,11 +72,7 @@ o        """
         def clean_up() -> None:
             with self.log.nested("cleaning up"):
                 for machine in self.machines:
-                    machine.clean_up()
-                    if machine.pid is None:
-                        continue
-                    log.log("killing {} (pid {})".format(machine.name, machine.pid))
-                    machine.process.kill()
+                    machine.release()
                 for _, _, process, _ in vde_sockets:
                     process.terminate()
             log.close()

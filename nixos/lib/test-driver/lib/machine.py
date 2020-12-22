@@ -135,6 +135,9 @@ class Machine:
         self.monitor: Optional[socket.socket] = None
         self.allow_reboot = args.get("allowReboot", False)
 
+    def release(self):
+        if self.pid is not None:
+            self.process.kill()
 
     @staticmethod
     def create_startcommand(args: Dict[str, str]) -> str:
@@ -697,9 +700,6 @@ class Machine:
             shutil.rmtree(self.state_dir)
             self.logger.log(f"deleting VM state directory {self.state_dir}")
             self.logger.log("if you want to keep the VM state, pass --keep-vm-state")
-
-    def clean_up(self):
-        pass
 
     def shutdown(self) -> None:
         if not self.booted:
