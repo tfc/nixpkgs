@@ -51,18 +51,20 @@ o        """
         self.machine_class = machine_class
         self.vm_scripts = vm_scripts
         self.configure_python_repl = configure_python_repl
-        
+
         vlan_nrs = list(dict.fromkeys(os.environ.get("VLANS", "").split()))
         vde_sockets = [self.create_vlan(v) for v in vlan_nrs]
         for nr, vde_socket, _, _ in vde_sockets:
             os.environ["QEMU_VDE_SOCKET_{}".format(nr)] = vde_socket
 
         self.machines = [
-            self.create_machine(
+            self.machine_class(
                 {
                     "startCommand": s,
                     "keepVmState": keep_vm_state,
                     "name": machine_name_from_script(s),
+                    "log": self.log,
+                    "redirectSerial": os.environ.get("USE_SERIAL", "0") == "1",
                 }
             )
             for s in self.vm_scripts
@@ -103,11 +105,6 @@ o        """
 
         global subtest
         subtest = lambda name: self.subtest(name)
-
-    def create_machine(self, args: Dict[str, Any]) -> machine.Machine:
-        args["log"] = self.log
-        args["redirectSerial"] = os.environ.get("USE_SERIAL", "0") == "1"
-        return self.machine_class(args)
 
     def run_tests(self) -> None:
         tests = os.environ.get("tests", None)
