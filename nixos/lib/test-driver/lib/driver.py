@@ -30,18 +30,6 @@ import common
 import machine
 
 
-@contextmanager
-def subtest(name: str) -> Iterator[None]:
-    with log.nested(name):
-        try:
-            yield
-            return True
-        except Exception as e:
-            log.log(f'Test "{name}" failed with error: "{e}"')
-            raise e
-
-    return False
-
 def test_script() -> None:
     exec(os.environ["testScript"])
 
@@ -52,7 +40,7 @@ class Driver():
         """
         Args:
             - configure_python_repl: a function to configure the ptpython.repl
-        """
+o        """
         self.log = log
         self.machine_class = machine_class
         self.vm_scripts = vm_scripts
@@ -70,7 +58,7 @@ class Driver():
 
         @atexit.register
         def clean_up() -> None:
-            with log.nested("cleaning up"):
+            with self.log.nested("cleaning up"):
                 for machine in self.machines:
                     machine.clean_up()
                     if machine.pid is None:
@@ -81,6 +69,17 @@ class Driver():
                     process.terminate()
             log.close()
 
+    @contextmanager
+    def subtest(self, name: str) -> Iterator[None]:
+        with self.log.nested(name):
+            try:
+                yield
+                return True
+            except Exception as e:
+                self.log.log(f'Test "{name}" failed with error: "{e}"')
+                raise e
+
+        return False
 
     def export_symbols(self):
         global machines
@@ -94,6 +93,8 @@ class Driver():
         global start_all
         start_all = self.start_all
 
+        global subtest
+        subtest = lambda name: self.subtest(name)
 
     def create_machine(self, args: Dict[str, Any]) -> machine.Machine:
         args["log"] = self.log
@@ -126,7 +127,7 @@ class Driver():
                 machine.start()
 
     def join_all(self) -> None:
-        with log.nested("waiting for all VMs to finish"):
+        with self.log.nested("waiting for all VMs to finish"):
             for machine in self.machines:
                 machine.wait_for_shutdown()
 
