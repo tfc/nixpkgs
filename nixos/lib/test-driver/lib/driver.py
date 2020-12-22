@@ -33,6 +33,12 @@ import machine
 def test_script() -> None:
     exec(os.environ["testScript"])
 
+def machine_name_from_script(command: str) -> str:
+    match = re.search("run-(.+)-vm$", command)
+    if match:
+        return match.group(1)
+    return None
+
 
 class Driver():
     def __init__(self, machine_class, log, vm_scripts, keep_vm_state,
@@ -52,7 +58,13 @@ o        """
             os.environ["QEMU_VDE_SOCKET_{}".format(nr)] = vde_socket
 
         self.machines = [
-            self.create_machine({"startCommand": s, "keepVmState": keep_vm_state})
+            self.create_machine(
+                {
+                    "startCommand": s,
+                    "keepVmState": keep_vm_state,
+                    "name": machine_name_from_script(s),
+                }
+            )
             for s in self.vm_scripts
         ]
 

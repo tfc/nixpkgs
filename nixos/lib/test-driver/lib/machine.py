@@ -110,15 +110,7 @@ def retry(fn: Callable) -> None:
 
 class Machine:
     def __init__(self, args: Dict[str, Any]) -> None:
-        if "name" in args:
-            self.name = args["name"]
-        else:
-            self.name = "machine"
-            cmd = args.get("startCommand", None)
-            if cmd:
-                match = re.search("run-(.+)-vm$", cmd)
-                if match:
-                    self.name = match.group(1)
+        self.name = args.get("name") or "machine"
         self.logger = args["log"]
         self.script = args.get("startCommand", self.create_startcommand(args))
 
