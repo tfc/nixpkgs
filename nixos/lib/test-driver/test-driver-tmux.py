@@ -11,26 +11,30 @@ import libtmux
 
 class MachineTmuxer:
     def __init__(self, name, log_directory) -> None:
-        server = libtmux.Server(socket_path=os.environ["TMUX_SOCKET"])
-        self.tmux_session = server.list_sessions()[0]
+        self.server = libtmux.Server(socket_path=os.environ["TMUX_SOCKET"])
+        self.tmux_session = self.server.list_sessions()[0]
+        self.name = name
 
-        log_file_name = os.path.join(log_directory, f"vm-log-{name}")
-        self.log_file = open(log_file_name, "w")
+        self.log_file_name = os.path.join(log_directory, f"vm-log-{name}")
+        self.log_file = open(self.log_file_name, "w")
+
+        self.tmux_window = None
+
+    def create_window(self) -> None:
+        if self.tmux_window is not None:
+            return
 
         self.tmux_window = self.tmux_session.new_window(
-            window_name=f"{name}",
+            window_name=f"{self.name}",
             attach=False,
-            window_shell=f"echo 'The machine {name} has not been started yet'; tail -f {log_file_name}",
+            window_shell=f"echo 'The machine {self.name} has not been started yet'; tail -f {self.log_file_name}",
         )
         pane = self.tmux_window.split_window(
-            attach=True, shell="tty; sleep 10d", percent=70
+            attach=True, shell="while true; do socat /tmp/lelelelelel -; done", percent=70
         )
-        self.tty = pane.capture_pane()[0]
-
-    def tty_path(self) -> str:
-        return self.tty
 
     def log_line(self, line: str) -> None:
+        self.create_window()
         self.log_file.write("{}\n".format(line))
         self.log_file.flush()
 
@@ -68,7 +72,7 @@ def main() -> None:
         tmuxers[name] = tmuxer
         args["log_serial"] = lambda x: tmuxer.log_line(f"[{name} serial] {x}")
         args["log_machinestate"] = lambda x: tmuxer.log_line(f"[{name} machine-ctrl] {x}")
-        args["tty_path"] = tmuxer.tty_path()
+        args["tty_path"] = "/tmp/lelelelelel" #tmuxer.tty_path()
         return args
 
     try:

@@ -631,7 +631,7 @@ class Machine:
         if self.tty_path is not None:
             qemu_tty_options = " ".join(
                 [
-                    f"-chardev tty,id=console,path={self.tty_path}",
+                    f"-chardev socket,server,nowait,id=console,path={self.tty_path}",
                     "-device virtconsole,chardev=console",
                 ]
             )
