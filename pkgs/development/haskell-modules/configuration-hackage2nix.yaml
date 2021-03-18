@@ -1741,7 +1741,7 @@ default-package-overrides:
   - pager ==0.1.1.0
   - pagination ==0.2.2
   - pagure-cli ==0.2
-  - pandoc ==2.11.4
+  - pandoc ==2.12
   - pandoc-plot ==1.1.0
   - pandoc-types ==1.22
   - pantry ==0.5.1.4
