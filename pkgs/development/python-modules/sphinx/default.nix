@@ -22,7 +22,7 @@
 , sphinxcontrib-websupport
 # check phase
 , html5lib
-, imagemagick
+, imagemagick-nox
 , pytestCheckHook
 , typed-ast
 }:
@@ -61,7 +61,7 @@ buildPythonPackage rec {
   ];
 
   checkInputs = [
-    imagemagick
+    imagemagick-nox
     html5lib
     pytestCheckHook
   ] ++ lib.optionals (pythonOlder "3.8") [
