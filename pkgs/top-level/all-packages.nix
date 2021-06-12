@@ -15217,6 +15217,7 @@ in
     nixStoreDir = config.nix.storeDir or builtins.storeDir;
     inherit (darwin) cctools;
   };
+  gobject-introspection-nox = gobject-introspection.override { x11Support = false; };
 
   goocanvas = callPackage ../development/libraries/goocanvas { };
   goocanvas2 = callPackage ../development/libraries/goocanvas/2.x.nix { };
@@ -15337,6 +15338,7 @@ in
   pixman = callPackage ../development/libraries/pixman { };
 
   cairo = callPackage ../development/libraries/cairo { };
+  cairo-nox = cairo.override { x11Support = false; };
 
   cairomm = callPackage ../development/libraries/cairomm { };
 
@@ -16725,6 +16727,10 @@ in
   librsvg = callPackage ../development/libraries/librsvg {
     inherit (darwin) libobjc;
     inherit (darwin.apple_sdk.frameworks) ApplicationServices Foundation;
+  };
+  librsvg-nox = librsvg.override {
+   cairo = cairo-nox;
+   gobject-introspection = gobject-introspection-nox;
   };
 
   librsync = callPackage ../development/libraries/librsync { };
