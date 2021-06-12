@@ -24558,12 +24558,15 @@ in
 
   imagemagick6Big = imagemagick6.override { inherit ghostscript; };
 
-  imagemagick_light = lowPrio (imagemagick.override {
-    bzip2 = null;
-    zlib = null;
+  imagemagick-nox = imagemagick.override {
     libX11 = null;
     libXext = null;
     libXt = null;
+    librsvg = librsvg-nox;
+  };
+  imagemagick_light = lowPrio (imagemagick-nox.override {
+    bzip2 = null;
+    zlib = null;
     fontconfig = null;
     freetype = null;
     ghostscript = null;
