@@ -1029,16 +1029,16 @@ class Machine:
 
 
 class VLan:
-    """A handle to the vlan with this number, that also knows how to manage
-    it's lifecycle.
+    """This class handles a VLAN that the run-vm scripts identify via its
+    number handles. The network's lifetime equals the object's lifetime.
     """
 
     nr: int
     socket_dir: pathlib.Path
 
-    process: Optional[subprocess.Popen]
-    pid: Optional[int]
-    fd: Optional[io.TextIOBase]
+    process: subprocess.Popen
+    pid: int
+    fd: io.TextIOBase
 
     def __repr__(self) -> str:
         return f"<Vlan Nr. {self.nr}>"
@@ -1049,8 +1049,6 @@ class VLan:
 
         # TODO: don't side-effect environment here
         os.environ[f"QEMU_VDE_SOCKET_{self.nr}"] = str(self.socket_dir)
-
-    def start(self) -> None:
 
         rootlog.info("start vlan")
         pty_master, pty_slave = pty.openpty()
@@ -1075,12 +1073,8 @@ class VLan:
 
         rootlog.info(f"running vlan (pid {self.pid})")
 
-    def release(self) -> None:
-        if self.pid is None:
-            return
+    def __del__(self) -> None:
         rootlog.info(f"kill vlan (pid {self.pid})")
-        assert self.fd
-        assert self.process
         self.fd.close()
         self.process.terminate()
 
@@ -1105,10 +1099,8 @@ class Driver:
         tmp_dir = pathlib.Path(os.environ.get("TMPDIR", tempfile.gettempdir()))
         tmp_dir.mkdir(mode=0o700, exist_ok=True)
 
-        self.vlans = [VLan(nr, tmp_dir) for nr in vlans]
         with rootlog.nested("start all VLans"):
-            for vlan in self.vlans:
-                vlan.start()
+            self.vlans = [VLan(nr, tmp_dir) for nr in vlans]
 
         def cmd(scripts: List[str]) -> Iterator[NixStartScript]:
             for s in scripts:
@@ -1129,8 +1121,6 @@ class Driver:
             with rootlog.nested("clean up"):
                 for machine in self.machines:
                     machine.release()
-                for vlan in self.vlans:
-                    vlan.release()
 
     def subtest(self, name: str) -> Iterator[None]:
         """Group logs under a given test name"""
