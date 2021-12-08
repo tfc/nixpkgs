@@ -29,13 +29,13 @@ assertExecutable() {
 
 # To troubleshoot a binary wrapper after you compiled it,
 # use the `strings` command or open the binary file in a text editor.
-makeBinaryWrapper() {
+makeWrapper() {
     assertExecutable "$1"
     makeDocumentedCWrapper "$1" "${@:3}" | cc -Os -x c -o "$2" -
 }
 
 # Syntax: wrapProgramBinary <PROGRAM> <MAKE-WRAPPER FLAGS...>
-wrapProgramBinary() {
+wrapProgram() {
     local prog="$1"
     local hidden
 
@@ -48,7 +48,7 @@ wrapProgramBinary() {
     mv "$prog" "$hidden"
     # Silence warning about unexpanded $0:
     # shellcheck disable=SC2016
-    makeBinaryWrapper "$hidden" "$prog" --inherit-argv0 "${@:2}"
+    makeWrapper "$hidden" "$prog" --inherit-argv0 "${@:2}"
 }
 
 # Generate source code for the wrapper in such a way that the wrapper source code
