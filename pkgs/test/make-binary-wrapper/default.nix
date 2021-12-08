@@ -16,7 +16,8 @@ let
     if [ -f "${./.}/${testname}.env" ]; then
       eval "makeBinaryWrapper ${envCheck} wrapped $params"
       env -i ./wrapped > env.txt
-      sed 's#SUBST_ARGV0#${envCheck}#' "${./.}/${testname}.env" > golden-env.txt
+      sed "s#SUBST_ARGV0#${envCheck}#;s#SUBST_CWD#$PWD#" \
+        "${./.}/${testname}.env" > golden-env.txt
       if ! diff env.txt golden-env.txt; then
         echo "env/argv should be:"
         cat golden-env.txt
