@@ -603,8 +603,8 @@ in
 
   makeInitrd = callPackage ../build-support/kernel/make-initrd.nix; # Args intentionally left out
 
-  makeWrapper = makeSetupHook { deps = [ dieHook ]; substitutions = { shell = targetPackages.runtimeShell; }; }
-                              ../build-support/setup-hooks/make-wrapper.sh;
+  makeWrapper = makeBinaryWrapper; #makeSetupHook { deps = [ dieHook ]; substitutions = { shell = targetPackages.runtimeShell; }; }
+                 #             ../build-support/setup-hooks/make-wrapper.sh;
 
   makeBinaryWrapper = makeSetupHook {
     deps = [ dieHook ];
