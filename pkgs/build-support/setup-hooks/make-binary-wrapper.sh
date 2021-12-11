@@ -104,6 +104,14 @@ makeCWrapper() {
                 n=$((n + 1))
                 [ $n -ge "$length" ] && main="$main#error makeCWrapper: $p takes 1 argument"$'\n'
             ;;
+            --run)
+                cmd="run_command(\"${params[n + 1]}\");"
+                main="$main$cmd"$'\n'
+                uses_run_cmd=1
+                n=$((n + 1))
+                [ $n -ge "$length" ] && main="$main#error makeCWrapper: $p takes 1 argument"$'\n'
+            ;;
+
             --prefix)
                 cmd=$(setEnvPrefix "${params[n + 1]}" "${params[n + 2]}" "${params[n + 3]}")
                 main="$main$cmd"$'\n'
@@ -166,7 +174,21 @@ makeCWrapper() {
     printf '%s\n' "#include <stdlib.h>"
     [ -z "$uses_assert" ]   || printf '%s\n' "#include <assert.h>"
     [ -z "$uses_stdio" ]    || printf '%s\n' "#include <stdio.h>"
+    [ -z "$uses_run_cmd" ]    || printf '%s\n' "#include <sys/wait.h>"
     [ -z "$uses_assert_success" ] || printf '\n%s\n' "#define assert_success(e) do { if ((e) < 0) { perror(#e); abort(); } } while (0)"
+    [ -z "$uses_run_cmd" ] || echo '#define run_command(cmd) \
+  do { \
+    pid_t my_pid = fork(); \
+    if (0 == my_pid) { \
+      char * const cmdline[2] = {(cmd), NULL}; \
+      if (execv(cmdline[0], cmdline)) { return -1; } \
+    } \
+    \
+    int status; \
+    if (-1 == waitpid(my_pid , &status , 0) || 1 != WIFEXITED(status) || 0 != WEXITSTATUS(status)) { \
+      return -1; \
+    } \
+  } while (0)'
     [ -z "$uses_prefix" ] || printf '\n%s\n' "$(setEnvPrefixFn)"
     [ -z "$uses_suffix" ] || printf '\n%s\n' "$(setEnvSuffixFn)"
     printf '\n%s' "int main(int argc, char **argv) {"
