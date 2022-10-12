@@ -3,6 +3,7 @@ import io
 import os
 import pty
 import subprocess
+from typing import Optional, List
 
 from test_driver.logger import rootlog
 
@@ -22,7 +23,7 @@ class VLan:
     def __repr__(self) -> str:
         return f"<Vlan Nr. {self.nr}>"
 
-    def __init__(self, nr: int, tmp_dir: Path):
+    def __init__(self, nr: int, tmp_dir: Path, tap: Optional[str]):
         self.nr = nr
         self.socket_dir = tmp_dir / f"vde{self.nr}.ctl"
 
@@ -36,8 +37,13 @@ class VLan:
         # nixos/tests/networking.nix vlan-ping.
         # VLAN Tagged traffic (802.1Q) seams to be blocked if a vde_switch is
         # used without the hub mode (flood packets to all ports).
+        cmd_args: List[str] = ["-s", str(self.socket_dir), "--dirmode", "0700", "--hub"]
+
+        if tap is not None:
+            cmd_args += ["--tap", tap]
+
         self.process = subprocess.Popen(
-            ["vde_switch", "-s", self.socket_dir, "--dirmode", "0700", "--hub"],
+            ["vde_switch"] + cmd_args,
             stdin=pty_slave,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

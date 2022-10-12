@@ -48,6 +48,7 @@ class Driver:
         tests: str,
         out_dir: Path,
         keep_vm_state: bool = False,
+        vlan_bridges: Dict[int, str] = {},
     ):
         self.tests = tests
         self.out_dir = out_dir
@@ -56,7 +57,7 @@ class Driver:
 
         with rootlog.nested("start all VLans"):
             vlans = list(set(vlans))
-            self.vlans = [VLan(nr, tmp_dir) for nr in vlans]
+            self.vlans = [VLan(nr, tmp_dir, vlan_bridges.get(int(nr))) for nr in vlans]
 
         def cmd(scripts: List[str]) -> Iterator[NixStartScript]:
             for s in scripts:

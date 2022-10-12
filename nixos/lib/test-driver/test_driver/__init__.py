@@ -3,6 +3,7 @@ import argparse
 import ptpython.repl
 import os
 import time
+from typing import Dict, Tuple
 
 from test_driver.logger import rootlog
 from test_driver.driver import Driver
@@ -95,6 +96,21 @@ def main() -> None:
         type=Path,
     )
 
+    def to_tuple(input: str) -> Tuple[int, str]:
+        [a, b] = map(lambda x: x.strip(), input.split("="))
+        return int(a), b
+
+    def to_tuples(input: str) -> Dict[int, str]:
+        return dict(map(to_tuple, input.split(",")))
+
+    arg_parser.add_argument(
+        "--vlan_bridges",
+        metavar="VLANBRIDGES",
+        type=to_tuples,
+        help="determines which vlans shall be coupled with TAP devices",
+        default={},
+    )
+
     args = arg_parser.parse_args()
 
     if not args.keep_vm_state:
@@ -106,6 +122,7 @@ def main() -> None:
         args.testscript.read_text(),
         args.output_directory.resolve(),
         args.keep_vm_state,
+        args.vlan_bridges,
     ) as driver:
         if args.interactive:
             ptpython.repl.embed(driver.test_symbols(), {})
