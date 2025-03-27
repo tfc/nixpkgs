@@ -4,35 +4,27 @@
   meta.maintainers = [ lib.maintainers.zupo ];
 
   nodes.terminal =
-    {
-      config,
-      pkgs,
-      lib,
-      ...
-    }:
-    let
-      # Create a patched version of the package that points to the local dashboard
-      # for easier testing
-      patchedPareto = pkgs.paretosecurity.overrideAttrs (oldAttrs: {
-        postPatch = ''
-          substituteInPlace team/report.go \
-            --replace-warn 'const reportURL = "https://dash.paretosecurity.com"' \
-                           'const reportURL = "http://dashboard"'
-        '';
-      });
-    in
+    { pkgs, ... }:
     {
       imports = [ ./common/user-account.nix ];
 
       services.paretosecurity = {
         enable = true;
-        package = patchedPareto;
+
+        # Create a patched version of the package that points to the local dashboard
+        # for easier testing
+        package = pkgs.paretosecurity.overrideAttrs (oldAttrs: {
+          postPatch = oldAttrs.postPatch or "" + ''
+            substituteInPlace team/report.go \
+              --replace-warn 'const reportURL = "https://dash.paretosecurity.com"' \
+                             'const reportURL = "http://dashboard"'
+          '';
+        });
       };
 
     };
 
   nodes.dashboard =
-    { config, pkgs, ... }:
     {
       networking.firewall.allowedTCPPorts = [ 80 ];
 
@@ -48,7 +40,7 @@
     };
 
   nodes.xfce =
-    { config, pkgs, ... }:
+    { pkgs, ... }:
     {
       imports = [ ./common/user-account.nix ];
 
@@ -68,7 +60,6 @@
 
       environment.systemPackages = [ pkgs.xdotool ];
       environment.variables.XAUTHORITY = "/home/alice/.Xauthority";
-
     };
 
   enableOCR = true;
@@ -117,6 +108,10 @@
     ]:
         status, out = xfce.systemctl("is-enabled " + unit, "alice")
         assert status == 0, f"Unit {unit} is not enabled (status: {status}): {out}"
+    # this is going to break if the default resolution changes.
+    # either make it depend on the resolution, or set the resolution yourself,
+    # or find a way to identify the position programmatically
+    # generally reducing the resolution might make the OCR faster and more stable
     xfce.succeed("xdotool mousemove 850 10")
     xfce.wait_for_text("Pareto Security")
     xfce.succeed("xdotool click 1")

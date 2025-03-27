@@ -7,14 +7,14 @@
   nixosTests,
 }:
 
-buildGoModule rec {
+buildGoModule (finalAttrs: {
   pname = "paretosecurity";
   version = "0.0.96";
 
   src = fetchFromGitHub {
     owner = "ParetoSecurity";
     repo = "agent";
-    rev = version;
+    rev = finalAttrs.version;
     hash = "sha256-SyeIGSDvrnOvyOJ0zC8CulpaMa+iZeRaMTJUSydz2tw=";
   };
 
@@ -23,31 +23,31 @@ buildGoModule rec {
 
   ldflags = [
     "-s"
-    "-X=github.com/ParetoSecurity/agent/shared.Version=${version}"
-    "-X=github.com/ParetoSecurity/agent/shared.Commit=${src.rev}"
+    "-X=github.com/ParetoSecurity/agent/shared.Version=${finalAttrs.version}"
+    "-X=github.com/ParetoSecurity/agent/shared.Commit=${finalAttrs.src.rev}"
     "-X=github.com/ParetoSecurity/agent/shared.Date=1970-01-01T00:00:00Z"
   ];
 
   postInstall = ''
     # Install global systemd files
-    install -Dm400 ${src}/apt/paretosecurity.socket $out/lib/systemd/system/paretosecurity.socket
-    install -Dm400 ${src}/apt/paretosecurity.service $out/lib/systemd/system/paretosecurity.service
+    install -Dm400 ${finalAttrs.src}/apt/paretosecurity.socket $out/lib/systemd/system/paretosecurity.socket
+    install -Dm400 ${finalAttrs.src}/apt/paretosecurity.service $out/lib/systemd/system/paretosecurity.service
     substituteInPlace $out/lib/systemd/system/paretosecurity.service \
         --replace-fail "/usr/bin/paretosecurity" "$out/bin/paretosecurity"
 
     # Install user systemd files
-    install -Dm444 ${src}/apt/paretosecurity-user.timer $out/lib/systemd/user/paretosecurity-user.timer
-    install -Dm444 ${src}/apt/paretosecurity-user.service $out/lib/systemd/user/paretosecurity-user.service
+    install -Dm444 ${finalAttrs.src}/apt/paretosecurity-user.timer $out/lib/systemd/user/paretosecurity-user.timer
+    install -Dm444 ${finalAttrs.src}/apt/paretosecurity-user.service $out/lib/systemd/user/paretosecurity-user.service
     substituteInPlace $out/lib/systemd/user/paretosecurity-user.service \
         --replace-fail "/usr/bin/paretosecurity" "$out/bin/paretosecurity"
-    install -Dm444 ${src}/apt/paretosecurity-trayicon.service $out/lib/systemd/user/paretosecurity-trayicon.service
+    install -Dm444 ${finalAttrs.src}/apt/paretosecurity-trayicon.service $out/lib/systemd/user/paretosecurity-trayicon.service
     substituteInPlace $out/lib/systemd/user/paretosecurity-trayicon.service \
         --replace-fail "/usr/bin/paretosecurity" "$out/bin/paretosecurity"
   '';
 
   passthru.tests = {
     version = testers.testVersion {
-      version = "${version}";
+      inherit (finalAttrs) version;
       package = paretosecurity;
     };
     integration_test = nixosTests.paretosecurity;
