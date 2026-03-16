@@ -28,7 +28,7 @@
 }:
 
 let
-  attrs = fromTOML (builtins.readFile ./pyproject.toml);
+  attrs = fromTOML (builtins.readFile ./nix-required-mounts/pyproject.toml);
   pname = attrs.project.name;
   inherit (attrs.project) version;
 in
@@ -37,11 +37,18 @@ python3Packages.buildPythonApplication {
   inherit pname version;
   pyproject = true;
 
-  src = lib.cleanSource ./.;
+  src = lib.cleanSource ./nix-required-mounts;
 
   nativeBuildInputs = [
     makeWrapper
     python3Packages.setuptools
+  ];
+
+  checkInputs = [
+    python3Packages.pytestCheckHook
+  ];
+  pythonImportsCheck = [
+    "nix_required_mounts"
   ];
 
   postFixup = ''
