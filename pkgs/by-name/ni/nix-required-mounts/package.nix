@@ -46,7 +46,6 @@ python3Packages.buildPythonApplication {
 
   checkInputs = [
     python3Packages.pytestCheckHook
-    python3Packages.pytest-doctestplus
   ];
   pythonImportsCheck = [
     "nix_required_mounts"
