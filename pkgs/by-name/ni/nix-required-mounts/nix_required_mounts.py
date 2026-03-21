@@ -232,8 +232,8 @@ def validate_mounts(
 
 def match_mounts(
     allowed_patterns: AllowedPatterns, required_features: list[str]
-) -> Iterable[Tuple[PathString, PathString, bool]]:
-    """List (guest, host, followlinks) triplets corresponding to `required_features`.
+) -> Iterable[tuple[PathString, PathString, bool]]:
+    """List (host, guest, followlinks) triplets corresponding to `required_features`.
 
     >>> with TemporaryTree(
     ...     ["chain/a", "mkdir"],
@@ -299,9 +299,9 @@ def match_mounts(
     return (mnt for pattern in patterns for mnt in validate_mounts(pattern))
 
 
-def mounts_closure(
+def discover_reachable_paths(
     inputs: Iterable[tuple[PathString, PathString, bool]],
-) -> list[Tuple[PathString, PathString]]:
+) -> list[tuple[PathString, PathString]]:
     """TODO: Explain how this is more than map(symlink_targets).
 
     >>> depth = 15
@@ -312,38 +312,36 @@ def mounts_closure(
     ...     ["chain/b", "->", "a"],
     ...     ["chain/c", "->", "b"],
     ...     ["../c/d", "mkdir"],
-    ...     ["jump/a/b", "->", "../c/d"],
+    ...     ["jump-out/a/b", "->", "../c/d"],
     ...     ["far-up/a/b", "->", f"../{far_up}"],
     ...     [f"far-up/{far_up}/n", "->", f"{far_up_inv}/o/p"],
     ... ) as tt:
     ...     cc = tt.to_abs("chain/c").as_posix()
-    ...     ja = tt.to_abs("jump/a").as_posix()
-    ...     paths = mounts_closure([
-    ...         ("/guest/chain/c", cc, True),
-    ...         ("/guest/jump/a", ja, True),
+    ...     ja = tt.to_abs("jump-out/a").as_posix()
+    ...     paths = discover_reachable_paths([
+    ...         (cc, cc, True),
+    ...         (ja, ja,True),
     ...     ])
     ...     paths = sorted(paths)
-    ...     paths = [(tt.subst(x), tt.subst(y)) for x, y in paths]
-    ...     paths_chain_jump = paths
+    ...     paths = [(tt.subst(x), tt.subst(y)) for (x,y) in paths]
+    ...     print(pformat(paths))
     ...
     ...     far_up_b = tt.to_abs("far-up/a/b").as_posix()
-    ...     paths = mounts_closure([
-    ...         ("/guest/a/b", far_up_b, True),
+    ...     paths = discover_reachable_paths([
+    ...         (far_up_b, far_up_b, True),
     ...     ])
     ...     paths = sorted(paths)
-    ...     paths = [(tt.subst(x), tt.subst(y)) for x, y in paths]
-    ...     paths_far_up = paths
-    >>> print(pformat(paths_chain_jump))
-    [('/guest/chain/a', '${TMP}/chain/a'),
-     ('/guest/chain/b', '${TMP}/chain/b'),
-     ('/guest/chain/c', '${TMP}/chain/c'),
-     ('/guest/jump/a', '${TMP}/jump/a'),
-     ('/guest/jump/c/d', '${TMP}/jump/c/d')]
-    >>> print(pformat(paths_far_up))
-    [('/guest/a/b', '${TMP}/far-up/a/b'),
-     ('/guest/o/p', '${TMP}/far-up/o/p'),
-     ('/guest/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x',
-      '${TMP}/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x')]
+    ...     paths = [(tt.subst(x), tt.subst(y)) for (x,y) in paths]
+    ...     print(pformat(paths))
+    [('${TMP}/chain/a', '${TMP}/chain/a'),
+     ('${TMP}/chain/b', '${TMP}/chain/b'),
+     ('${TMP}/chain/c', '${TMP}/chain/c'),
+     ('${TMP}/jump-out/a', '${TMP}/jump-out/a'),
+     ('${TMP}/jump-out/c/d', '${TMP}/jump-out/c/d')]
+    [('${TMP}/far-up/a/b', '${TMP}/far-up/a/b'),
+     ('${TMP}/far-up/o/p', '${TMP}/far-up/o/p'),
+     ('${TMP}/far-up/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x',
+      '${TMP}/far-up/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x')]
     """
     queue: deque[tuple[PathString, PathString, bool]] = deque(inputs)
     unique_mounts: set[tuple[PathString, PathString]] = set()
@@ -377,9 +375,9 @@ def mounts_closure(
     return mounts
 
 
-def prune_mounts(
-    inputs: list[tuple[PathString, PathString, bool]],
-) -> list[tuple[PathString, PathString, bool]]:
+def prune_paths(
+    inputs: list[tuple[PathString, PathString]],
+) -> list[tuple[PathString, PathString]]:
     """Deduplicate mountable paths, discarding children of already-mounted parents.
 
     >>> with TemporaryTree(
@@ -390,10 +388,10 @@ def prune_mounts(
     ...     print([
     ...         (tt.subst(x), tt.subst(y), follow)
     ...         for x, y, follow
-    ...         in prune_mounts([(a, a, True), (b, b, True), (root, root, True)])])
+    ...         in prune_paths([(a, a, True), (b, b, True), (root, root, True)])])
     [('${TMP}', '${TMP}', True)]
 
-    >>> print(prune_mounts([]))
+    >>> print(prune_paths([]))
     []
     """
 
@@ -471,8 +469,8 @@ def entrypoint():
         filter(known_features.__contains__, required_features)
     )
 
-    mounts = prune_mounts(
-        mounts_closure(
+    mounts = prune_paths(
+        discover_reachable_paths(
             match_mounts(allowed_patterns, required_features)
         )
     )
