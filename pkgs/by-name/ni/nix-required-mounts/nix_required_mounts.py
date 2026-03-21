@@ -75,7 +75,7 @@ class TemporaryTree(TemporaryDirectory):
         self.ops = ops
         super().__init__()
 
-    def listdir(self, subdir="") -> list[str]:
+    def listdir(self, subdir="") -> List[str]:
         return sorted(os.listdir(Path(self.name, subdir)))
 
     def subst(self, path) -> str:
