@@ -309,7 +309,7 @@ def mounts_closure(
     >>> far_up_inv = "../" * depth
     >>> with TemporaryTree(
     ...     ["chain/a", "mkdir"],
-    ...     ["chain/b", "->", "${TMP}/chain/a"],
+    ...     ["chain/b", "->", "a"],
     ...     ["chain/c", "->", "b"],
     ...     ["../c/d", "mkdir"],
     ...     ["jump/a/b", "->", "../c/d"],
@@ -333,14 +333,12 @@ def mounts_closure(
     ...     paths = sorted(paths)
     ...     paths = [(tt.subst(x), tt.subst(y)) for x, y in paths]
     ...     paths_far_up = paths
-
     >>> print(pformat(paths_chain_jump))
-    [('${TMP}/chain/a', '${TMP}/chain/a'),
+    [('/guest/chain/a', '${TMP}/chain/a'),
      ('/guest/chain/b', '${TMP}/chain/b'),
      ('/guest/chain/c', '${TMP}/chain/c'),
      ('/guest/jump/a', '${TMP}/jump/a'),
      ('/guest/jump/c/d', '${TMP}/jump/c/d')]
-
     >>> print(pformat(paths_far_up))
     [('/guest/a/b', '${TMP}/far-up/a/b'),
      ('/guest/o/p', '${TMP}/far-up/o/p'),
@@ -364,18 +362,18 @@ def mounts_closure(
         if not (host_path.is_dir() or host_path.is_symlink()):
             continue
 
-        subdirs = [host_path] + [
+        paths = [host_path] + [
             child for child in host_path.iterdir() if host_path.is_dir()
         ]
 
-        for subdir in subdirs:
-            for target in symlink_closure(subdir):
-                target_str = target.absolute().as_posix()
+        for child in paths:
+            for parent in symlink_closure(child):
+                parent_str = parent.absolute().as_posix()
                 if all(
-                    not target.absolute().is_relative_to(existing_path)
+                    not parent.absolute().is_relative_to(existing_path)
                     for existing_path, _ in unique_mounts
                 ):
-                    queue.append((target_str, target_str, follow_symlinks))
+                    queue.append((parent_str, parent_str, follow_symlinks))
     return mounts
 
 

@@ -23,4 +23,4 @@ nix-required-mounts = "nix_required_mounts:entrypoint"
 line-length = 79
 
 [tool.pytest.ini_options]
-addopts = ["--doctest-modules", "--doctest-report", "ndiff"]
+addopts = ["--doctest-plus"]
