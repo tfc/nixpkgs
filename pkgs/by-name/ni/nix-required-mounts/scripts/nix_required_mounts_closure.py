@@ -1,13 +1,12 @@
 import json
 import os
 
-store_dir = os.environ.get("storeDir", "/nix/store")
-config = {}
-cache = {}
+store_dir = os.environ["storeDir"]
 
-if __name__ == "__main__":
-    with open(os.environ["shallowConfigPath"], "r") as f:
-        config = json.load(f)
+with open(os.environ["shallowConfigPath"], "r") as f:
+    config = json.load(f)
+
+cache = {}
 
 
 def read_edges(path: str | dict) -> list[str | dict]:
@@ -42,6 +41,5 @@ for pattern in config:
         closure.extend(read_edges(path))
     config[pattern]["paths"] = list({host_path(m): m for m in closure}.values())
 
-if __name__ == "__main__":
-  with open(os.environ["out"], "w") as f:
-      json.dump(config, f)
+with open(os.environ["out"], "w") as f:
+    json.dump(config, f)
