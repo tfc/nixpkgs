@@ -232,7 +232,7 @@ def validate_mounts(
 
 def match_mounts(
     allowed_patterns: AllowedPatterns, required_features: list[str]
-) -> Iterable[tuple[PathString, PathString, bool]]:
+) -> Iterable[Tuple[PathString, PathString, bool]]:
     """List (guest, host, followlinks) triplets corresponding to `required_features`.
 
     >>> with TemporaryTree(
@@ -301,7 +301,7 @@ def match_mounts(
 
 def mounts_closure(
     inputs: Iterable[tuple[PathString, PathString, bool]],
-) -> list[tuple[PathString, PathString]]:
+) -> list[Tuple[PathString, PathString]]:
     """TODO: Explain how this is more than map(symlink_targets).
 
     >>> depth = 15
