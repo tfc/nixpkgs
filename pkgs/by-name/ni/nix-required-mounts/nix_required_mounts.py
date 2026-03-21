@@ -7,10 +7,8 @@ import subprocess
 import textwrap
 from argparse import ArgumentParser
 from collections import deque
-from tempfile import TemporaryDirectory
 from itertools import chain
 from pathlib import Path, PurePath
-from pprint import pformat
 from typing import (
     TypeAlias,
     TypedDict,
@@ -54,60 +52,6 @@ parser.add_argument(
     help="Whether to print the final empty line",
 )
 parser.add_argument("-v", "--verbose", action="count", default=0)
-
-
-class TemporaryTree(TemporaryDirectory):
-    def __init__(self, *ops):
-        """
-        >>> with TemporaryTree(
-        ...     ["root", "mkdir"],
-        ...     ["root/c", "->", "b"],
-        ...     ["root/b", "->", "a"],
-        ...     ["root/a", "->", "../root"],
-        ... ) as tt:
-        ...     print(tt.listdir())
-        ...     print(tt.listdir("root"))
-        ...     print(tt.listdir("root/c"))
-        ['root']
-        ['a', 'b', 'c']
-        ['a', 'b', 'c']
-        """
-        self.ops = ops
-        super().__init__()
-
-    def listdir(self, subdir="") -> List[str]:
-        return sorted(os.listdir(Path(self.name, subdir)))
-
-    def subst(self, path) -> str:
-        return str(path).replace(self.name, "${TMPDIR}")
-
-    def unsubst(self, path) -> str:
-        return str(path).replace("${TMPDIR}", self.name)
-
-    def to_abs(self, path) -> Path:
-        if os.path.isabs(path):
-            return Path(ptah)
-        return Path(self.name, path)
-
-    def __enter__(self, *args, **kwargs):
-        root_str = super().__enter__()
-        root = Path(root_str)
-        for op in self.ops:
-            target = None
-            match op:
-                case [loc, "->", target]:
-                    loc = self.to_abs(loc)
-                    os.makedirs(loc.parent, exist_ok=True)
-                    loc.symlink_to(self.unsubst(target))
-                case [loc, "mkdir"]:
-                    os.makedirs(self.to_abs(loc), exist_ok=True)
-                case str(loc):
-                    loc = self.to_abs(loc)
-                    os.makedirs(loc.parent, exist_ok=True)
-                    loc.touch()
-                case _:
-                    raise ValueError()
-        return self
 
 
 def symlink_targets(p: Path) -> list[Path]:
