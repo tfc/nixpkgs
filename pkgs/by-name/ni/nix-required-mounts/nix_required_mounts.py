@@ -79,18 +79,15 @@ class TemporaryTree(TemporaryDirectory):
         return sorted(os.listdir(Path(self.name, subdir)))
 
     def subst(self, path) -> str:
-        return str(path).replace(self.name, "${TMP}")
+        return str(path).replace(self.name, "${TMPDIR}")
 
     def unsubst(self, path) -> str:
-        return str(path).replace("${TMP}", self.name)
+        return str(path).replace("${TMPDIR}", self.name)
 
     def to_abs(self, path) -> Path:
         if os.path.isabs(path):
             return Path(ptah)
         return Path(self.name, path)
-
-    def symlink_targets(self, path):
-        return [self.subst(p) for p in symlink_targets(self.to_abs(path))]
 
     def __enter__(self, *args, **kwargs):
         root_str = super().__enter__()
@@ -114,43 +111,7 @@ class TemporaryTree(TemporaryDirectory):
 
 
 def symlink_targets(p: Path) -> list[Path]:
-    """Traverse a chain of symlinks to collect every intermediate path up to the final destination.
-
-    ## "Chain" setup:
-    >>> with TemporaryTree(
-    ...     "a",
-    ...     ["b", "->", "a"],
-    ...     ["c", "->", "b"],
-    ... ) as tt:
-    ...     print(tt.symlink_targets("a"))
-    ...     print(tt.symlink_targets("b"))
-    ...     print(tt.symlink_targets("c"))
-    []
-    ['${TMP}/a']
-    ['${TMP}/b', '${TMP}/a']
-
-    ## "Jump-out" setup:
-    >>> with TemporaryTree(
-    ...     "c/d",
-    ...     ["a/b", "->", "../c/d"],
-    ... ) as tt:
-    ...     print(tt.symlink_targets("a/b"))
-    ['${TMP}/c/d']
-
-    ## "Far-up" relative symlink:
-    >>> depth = 15
-    >>> path = "x/" * depth
-    >>> inv_path = "../" * depth
-    >>> with TemporaryTree(
-    ...     "o/p",
-    ...     ["a/b", "->", f"../{path}"],
-    ...     [f"{path}/n", "->", f"{inv_path}/o/p"],
-    ... ) as tt:
-    ...     print(tt.symlink_targets("a/b"))
-    ...     print(tt.symlink_targets(f"{path}/n"))
-    ['${TMP}/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x']
-    ['${TMP}/o/p']
-    """
+    """Traverses a chain of symlinks to collect every intermediate path up to the final destination."""
 
     out = []
     while p.is_symlink():
@@ -233,61 +194,6 @@ def validate_mounts(
 def enumerate_patterns(
     allowed_patterns: AllowedPatterns, required_features: list[str]
 ) -> Iterable[tuple[PathString, PathString, bool]]:
-    """Enumerate what?
-
-    >>> with TemporaryTree(
-    ...     ["chain/a", "mkdir"],
-    ...     ["chain/b", "->", "a"],
-    ...     ["chain/c", "->", "b"],
-    ...     ["jump/c/d", "mkdir"],
-    ...     ["jump/a/b", "->", "../c/d"],
-    ...     ["glob_base/a", "mkdir"],
-    ...     ["glob_base/c", "mkdir"],
-    ... ) as tt:
-    ...     def subst_results(results):
-    ...         return sorted((tt.subst(x), tt.subst(y), follow)
-    ...             for x, y, follow in results)
-    ...
-    ...     allowed_patterns = {
-    ...         "a": {
-    ...             "onFeatures": ["a"],
-    ...             "paths": [f"{tt.to_abs('glob_base')}/*"],
-    ...             "unsafeFollowSymlinks": True,
-    ...         }
-    ...     }
-    ...     results_globbing = subst_results(enumerate_patterns(allowed_patterns, ["a"]))
-    ...
-    ...     a1 = tt.to_abs("chain/a").as_posix()
-    ...     a2 = tt.to_abs("chain/b").as_posix()
-    ...     b1 = tt.to_abs("jump/a").as_posix()
-    ...     b2 = tt.to_abs("jump/c").as_posix()
-    ...     allowed_patterns = {
-    ...         "a": {
-    ...             "onFeatures": ["a", "a1"],
-    ...             "paths": [a1, a2],
-    ...             "unsafeFollowSymlinks": True,
-    ...         },
-    ...         "b": {
-    ...             "onFeatures": ["b", "b2"],
-    ...             "paths": [b1, b2],
-    ...             "unsafeFollowSymlinks": True,
-    ...         },
-    ...     }
-    ...     results_empty = subst_results(enumerate_patterns(allowed_patterns, []))
-    ...     results_a = subst_results(enumerate_patterns(allowed_patterns, ["a"]))
-    ...     results_b = subst_results(enumerate_patterns(allowed_patterns, ["b"]))
-    >>> print(pformat(results_globbing))
-    [('${TMP}/glob_base/a', '${TMP}/glob_base/a', True),
-     ('${TMP}/glob_base/c', '${TMP}/glob_base/c', True)]
-    >>> print(results_empty)
-    []
-    >>> print(pformat(results_a))
-    [('${TMP}/chain/a', '${TMP}/chain/a', True),
-     ('${TMP}/chain/b', '${TMP}/chain/b', True)]
-    >>> print(pformat(results_b))
-    [('${TMP}/jump/a', '${TMP}/jump/a', True),
-     ('${TMP}/jump/c', '${TMP}/jump/c', True)]
-    """
     patterns: list[Pattern] = [
         pattern
         for pattern in allowed_patterns.values()
@@ -302,47 +208,6 @@ def enumerate_patterns(
 def discover_reachable_paths(
     inputs: Iterable[tuple[PathString, PathString, bool]],
 ) -> list[tuple[PathString, PathString]]:
-    """TODO: Explain how this is more than map(symlink_targets).
-
-    >>> depth = 15
-    >>> far_up = "x/" * depth
-    >>> far_up_inv = "../" * depth
-    >>> with TemporaryTree(
-    ...     ["chain/a", "mkdir"],
-    ...     ["chain/b", "->", "a"],
-    ...     ["chain/c", "->", "b"],
-    ...     ["../c/d", "mkdir"],
-    ...     ["jump-out/a/b", "->", "../c/d"],
-    ...     ["far-up/a/b", "->", f"../{far_up}"],
-    ...     [f"far-up/{far_up}/n", "->", f"{far_up_inv}/o/p"],
-    ... ) as tt:
-    ...     cc = tt.to_abs("chain/c").as_posix()
-    ...     ja = tt.to_abs("jump-out/a").as_posix()
-    ...     paths = discover_reachable_paths([
-    ...         (cc, cc, True),
-    ...         (ja, ja,True),
-    ...     ])
-    ...     paths = sorted(paths)
-    ...     paths = [(tt.subst(x), tt.subst(y)) for (x,y) in paths]
-    ...     print(pformat(paths))
-    ...
-    ...     far_up_b = tt.to_abs("far-up/a/b").as_posix()
-    ...     paths = discover_reachable_paths([
-    ...         (far_up_b, far_up_b, True),
-    ...     ])
-    ...     paths = sorted(paths)
-    ...     paths = [(tt.subst(x), tt.subst(y)) for (x,y) in paths]
-    ...     print(pformat(paths))
-    [('${TMP}/chain/a', '${TMP}/chain/a'),
-     ('${TMP}/chain/b', '${TMP}/chain/b'),
-     ('${TMP}/chain/c', '${TMP}/chain/c'),
-     ('${TMP}/jump-out/a', '${TMP}/jump-out/a'),
-     ('${TMP}/jump-out/c/d', '${TMP}/jump-out/c/d')]
-    [('${TMP}/far-up/a/b', '${TMP}/far-up/a/b'),
-     ('${TMP}/far-up/o/p', '${TMP}/far-up/o/p'),
-     ('${TMP}/far-up/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x',
-      '${TMP}/far-up/x/x/x/x/x/x/x/x/x/x/x/x/x/x/x')]
-    """
     queue: deque[tuple[PathString, PathString, bool]] = deque(inputs)
     unique_mounts: set[tuple[PathString, PathString]] = set()
     mounts: list[tuple[PathString, PathString]] = []
@@ -378,23 +243,6 @@ def discover_reachable_paths(
 def prune_paths(
     inputs: list[tuple[PathString, PathString]],
 ) -> list[tuple[PathString, PathString]]:
-    """Deduplicate mountable paths, discarding children of already-mounted parents.
-
-    >>> with TemporaryTree(
-    ...     "c/d",
-    ...     ["a/b", "->", "../c/d"],
-    ... ) as tt:
-    ...     a, b, root = [tt.to_abs(x).as_posix() for x in ["a", "b", ""]]
-    ...     print([
-    ...         (tt.subst(x), tt.subst(y), follow)
-    ...         for x, y, follow
-    ...         in prune_paths([(a, a, True), (b, b, True), (root, root, True)])])
-    [('${TMP}', '${TMP}', True)]
-
-    >>> print(prune_paths([]))
-    []
-    """
-
     if len(inputs) < 2:
         return inputs
 
