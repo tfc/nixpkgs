@@ -230,10 +230,10 @@ def validate_mounts(
     return roots
 
 
-def match_mounts(
+def enumerate_patterns(
     allowed_patterns: AllowedPatterns, required_features: list[str]
 ) -> Iterable[tuple[PathString, PathString, bool]]:
-    """List (host, guest, followlinks) triplets corresponding to `required_features`.
+    """Enumerate what?
 
     >>> with TemporaryTree(
     ...     ["chain/a", "mkdir"],
@@ -250,12 +250,12 @@ def match_mounts(
     ...
     ...     allowed_patterns = {
     ...         "a": {
-    ...             "onFeatures": ["feat_a"],
+    ...             "onFeatures": ["a"],
     ...             "paths": [f"{tt.to_abs('glob_base')}/*"],
     ...             "unsafeFollowSymlinks": True,
     ...         }
     ...     }
-    ...     results_globbing = subst_results(match_mounts(allowed_patterns, ["feat_a"]))
+    ...     results_globbing = subst_results(enumerate_patterns(allowed_patterns, ["a"]))
     ...
     ...     a1 = tt.to_abs("chain/a").as_posix()
     ...     a2 = tt.to_abs("chain/b").as_posix()
@@ -263,19 +263,19 @@ def match_mounts(
     ...     b2 = tt.to_abs("jump/c").as_posix()
     ...     allowed_patterns = {
     ...         "a": {
-    ...             "onFeatures": ["feat_a", "feat_a1"],
+    ...             "onFeatures": ["a", "a1"],
     ...             "paths": [a1, a2],
     ...             "unsafeFollowSymlinks": True,
     ...         },
     ...         "b": {
-    ...             "onFeatures": ["feat_b", "feat_b2"],
+    ...             "onFeatures": ["b", "b2"],
     ...             "paths": [b1, b2],
     ...             "unsafeFollowSymlinks": True,
     ...         },
     ...     }
-    ...     results_empty = subst_results(match_mounts(allowed_patterns, []))
-    ...     results_a = subst_results(match_mounts(allowed_patterns, ["feat_a"]))
-    ...     results_b = subst_results(match_mounts(allowed_patterns, ["feat_b2"]))
+    ...     results_empty = subst_results(enumerate_patterns(allowed_patterns, []))
+    ...     results_a = subst_results(enumerate_patterns(allowed_patterns, ["a"]))
+    ...     results_b = subst_results(enumerate_patterns(allowed_patterns, ["b"]))
     >>> print(pformat(results_globbing))
     [('${TMP}/glob_base/a', '${TMP}/glob_base/a', True),
      ('${TMP}/glob_base/c', '${TMP}/glob_base/c', True)]
@@ -471,7 +471,7 @@ def entrypoint():
 
     mounts = prune_paths(
         discover_reachable_paths(
-            match_mounts(allowed_patterns, required_features)
+            enumerate_patterns(allowed_patterns, required_features)
         )
     )
 
