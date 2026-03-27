@@ -178,20 +178,8 @@ def prune_paths(inputs: list[PathString]) -> list[PathString]:
     return pruned
 
 
-def entrypoint():
-    args = parser.parse_args()
-
-    VERBOSITY_LEVELS = [logging.ERROR, logging.INFO, logging.DEBUG]
-
-    level_index = min(args.verbose, len(VERBOSITY_LEVELS) - 1)
-    logging.basicConfig(level=VERBOSITY_LEVELS[level_index])
-
-    drv_path = args.derivation_path
-
-    with open(args.patterns, "r") as f:
-        allowed_patterns = json.load(f)
-
-    if not Path(drv_path).exists():
+def parse_derivation(derivation_path: PathString) -> dict:
+    if not Path(derivation_path).exists():
         logging.error(
             f"{drv_path} doesn't exist."
             " Cf. https://github.com/NixOS/nix/issues/9272"
@@ -202,7 +190,7 @@ def entrypoint():
         [
             args.nix_exe,
             "show-derivation",
-            drv_path,
+            derivation_path,
         ],
         capture_output=True,
     )
@@ -225,13 +213,28 @@ def entrypoint():
         return
     [canon_drv_path] = parsed_drv.keys()
 
+    parsed_drv = parsed_drv[canon_drv_path]
+
+
+def entrypoint():
+    args = parser.parse_args()
+
+    VERBOSITY_LEVELS = [logging.ERROR, logging.INFO, logging.DEBUG]
+
+    level_index = min(args.verbose, len(VERBOSITY_LEVELS) - 1)
+    logging.basicConfig(level=VERBOSITY_LEVELS[level_index])
+
+    with open(args.patterns, "r") as f:
+        allowed_patterns = json.load(f)
+
+    parsed_drv = parse_derivation(args.derivation_path)
+
     known_features = set(
         chain.from_iterable(
             pattern["onFeatures"] for pattern in allowed_patterns.values()
         )
     )
 
-    parsed_drv = parsed_drv[canon_drv_path]
     required_features = get_required_system_features(parsed_drv)
     required_features = list(
         filter(known_features.__contains__, required_features)
