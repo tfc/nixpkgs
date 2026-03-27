@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import glob
 import json
 import os
@@ -13,6 +11,7 @@ from typing import (
     TypeAlias,
     TypedDict,
     Iterable,
+    NotRequired,
 )
 import logging
 
@@ -27,8 +26,10 @@ class Mount(TypedDict):
 
 class Pattern(TypedDict):
     onFeatures: list[str]
-    paths: list[Glob | Mount]
+    paths: list[Glob]
     unsafeFollowSymlinks: bool
+    storePaths: list[PathString]
+    mountTranslations: NotRequired[list[Mount]]
 
 
 AllowedPatterns: TypeAlias = dict[str, Pattern]
@@ -107,32 +108,8 @@ def get_required_system_features(parsed_drv: dict) -> list[str]:
     return drv_env.get("requiredSystemFeatures", "").split()
 
 
-def validate_mounts(
-    pattern: Pattern,
-) -> list[tuple[PathString, PathString, bool]]:
-    roots: list[tuple[PathString, PathString, bool]] = []
-    for mount in pattern["paths"]:
-        if isinstance(mount, PathString):
-            matches = glob.glob(mount)
-            assert matches, f"Specified host paths do not exist: {mount}"
-
-            roots.extend(
-                (m, m, pattern["unsafeFollowSymlinks"]) for m in matches
-            )
-        else:
-            assert isinstance(mount, dict) and "host" in mount, mount
-            assert Path(
-                mount["host"]
-            ).exists(), f"Specified host paths do not exist: {mount['host']}"
-            roots.append(
-                (
-                    mount["guest"],
-                    mount["host"],
-                    pattern["unsafeFollowSymlinks"],
-                )
-            )
-
-    return roots
+def expand_globs(paths: list[PathString]) -> list[PathString]:
+    return sum(map(glob.glob, paths), [])
 
 
 def enumerate_patterns(
@@ -150,54 +127,53 @@ def enumerate_patterns(
 
 
 def discover_reachable_paths(
-    inputs: Iterable[tuple[PathString, PathString, bool]],
-) -> list[tuple[PathString, PathString]]:
-    queue: deque[tuple[PathString, PathString, bool]] = deque(inputs)
-    unique_mounts: set[tuple[PathString, PathString]] = set()
-    mounts: list[tuple[PathString, PathString]] = []
+    inputs: Iterable[PathString], follow_symlinks: bool
+) -> list[PathString]:
+    queue: deque[PathString] = deque(inputs)
+    unique_paths: set[PathString] = set()
+    reachable_paths: list[PathString] = []
 
     while queue:
-        guest_path_str, host_path_str, follow_symlinks = queue.popleft()
-        if (guest_path_str, host_path_str) not in unique_mounts:
-            mounts.append((guest_path_str, host_path_str))
-            unique_mounts.add((guest_path_str, host_path_str))
+        path_str = queue.popleft()
+        print(path_str)
+        if path_str not in unique_paths:
+            reachable_paths.append(path_str)
+            unique_paths.add(path_str)
 
         if not follow_symlinks:
             continue
 
-        host_path = Path(host_path_str)
-        if not (host_path.is_dir() or host_path.is_symlink()):
+        path = Path(path_str)
+        if not (path.is_dir() or path.is_symlink()):
             continue
 
-        paths = [host_path] + [
-            child for child in host_path.iterdir() if host_path.is_dir()
-        ]
+        paths = [path]
+        if path.is_dir():
+            paths += [child for child in path.iterdir()]
 
         for child in paths:
             for parent in symlink_closure(child):
                 parent_str = parent.absolute().as_posix()
                 if all(
                     not parent.absolute().is_relative_to(existing_path)
-                    for existing_path, _ in unique_mounts
+                    for existing_path in unique_paths
                 ):
-                    queue.append((parent_str, parent_str, follow_symlinks))
-    return mounts
+                    queue.append(parent_str)
+    return reachable_paths
 
 
-def prune_paths(
-    inputs: list[tuple[PathString, PathString]],
-) -> list[tuple[PathString, PathString]]:
+def prune_paths(inputs: list[PathString]) -> list[PathString]:
     if len(inputs) < 2:
         return inputs
 
     sorted_inputs = sorted(inputs)
     pruned = [sorted_inputs[0]]
 
-    last_kept = Path(pruned[0][0])
+    last_kept = pruned[0]
     for current in sorted_inputs[1:]:
-        if not Path(current[0]).is_relative_to(last_kept):
+        if not Path(current).is_relative_to(last_kept):
             pruned.append(current)
-            last_kept = Path(current[0])
+            last_kept = Path(current)
 
     return pruned
 
