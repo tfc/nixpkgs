@@ -91,39 +91,25 @@ def symlink_closure(path: Path) -> list[Path]:
     return sum(map(symlink_targets, path_gen), [])
 
 
-def get_required_system_features(parsed_drv: dict) -> list[str]:
-    # Newer versions of Nix (since https://github.com/NixOS/nix/pull/13263) store structuredAttrs
-    # in the derivation JSON output.
+def get_required_system_features(parsed_drv: dict) -> set[str]:
+    # Newer versions of Nix (since https://github.com/NixOS/nix/pull/13263)
+    # store structuredAttrs in the derivation JSON output.
     if "structuredAttrs" in parsed_drv:
         return parsed_drv["structuredAttrs"].get("requiredSystemFeatures", [])
 
     # Older versions of Nix store structuredAttrs in the env as a JSON string.
     drv_env = parsed_drv.get("env", {})
     if "__json" in drv_env:
-        return list(
+        return set(
             json.loads(drv_env["__json"]).get("requiredSystemFeatures", [])
         )
 
     # Without structuredAttrs, requiredSystemFeatures is a space-separated string in env.
-    return drv_env.get("requiredSystemFeatures", "").split()
+    return set(drv_env.get("requiredSystemFeatures", "").split())
 
 
 def expand_globs(paths: list[PathString]) -> list[PathString]:
     return sum(map(glob.glob, paths), [])
-
-
-def enumerate_patterns(
-    allowed_patterns: AllowedPatterns, required_features: list[str]
-) -> Iterable[tuple[PathString, PathString, bool]]:
-    patterns: list[Pattern] = [
-        pattern
-        for pattern in allowed_patterns.values()
-        if any(
-            feature in required_features for feature in pattern["onFeatures"]
-        )
-    ]
-
-    return (mnt for pattern in patterns for mnt in validate_mounts(pattern))
 
 
 def discover_reachable_paths(
@@ -135,7 +121,6 @@ def discover_reachable_paths(
 
     while queue:
         path_str = queue.popleft()
-        print(path_str)
         if path_str not in unique_paths:
             reachable_paths.append(path_str)
             unique_paths.add(path_str)
@@ -169,26 +154,28 @@ def prune_paths(inputs: list[PathString]) -> list[PathString]:
     sorted_inputs = sorted(inputs)
     pruned = [sorted_inputs[0]]
 
-    last_kept = pruned[0]
+    last_kept: PathString = pruned[0]
     for current in sorted_inputs[1:]:
         if not Path(current).is_relative_to(last_kept):
             pruned.append(current)
-            last_kept = Path(current)
+            last_kept = current
 
     return pruned
 
 
-def parse_derivation(derivation_path: PathString) -> dict:
+def parse_derivation(
+    derivation_path: PathString, nix_exe: PathString | None
+) -> dict:
     if not Path(derivation_path).exists():
         logging.error(
-            f"{drv_path} doesn't exist."
+            f"{derivation_path} doesn't exist."
             " Cf. https://github.com/NixOS/nix/issues/9272"
             " Exiting the hook",
         )
 
     proc = subprocess.run(
         [
-            args.nix_exe,
+            nix_exe if nix_exe else "nix",
             "show-derivation",
             derivation_path,
         ],
@@ -201,19 +188,18 @@ def parse_derivation(derivation_path: PathString) -> dict:
         if "derivations" in parsed_drv:
             parsed_drv = parsed_drv["derivations"]
     except json.JSONDecodeError:
+        output_str: str = proc.stdout.decode("utf-8")
         logging.error(
             "Couldn't parse the output of"
             "`nix show-derivation`"
-            f". Expected JSON, observed: {proc.stdout}",
+            f". Expected JSON, observed: {output_str}",
         )
-        logging.error(
-            textwrap.indent(proc.stdout.decode("utf8"), prefix=" " * 4)
-        )
+        logging.error(textwrap.indent(output_str, prefix=" " * 4))
         logging.info("Exiting the nix-required-binds hook")
-        return
+
     [canon_drv_path] = parsed_drv.keys()
 
-    parsed_drv = parsed_drv[canon_drv_path]
+    return parsed_drv[canon_drv_path]
 
 
 def entrypoint():
@@ -227,37 +213,51 @@ def entrypoint():
     with open(args.patterns, "r") as f:
         allowed_patterns = json.load(f)
 
-    parsed_drv = parse_derivation(args.derivation_path)
+    parsed_drv = parse_derivation(args.derivation_path, args.nix_exe)
 
     known_features = set(
-        chain.from_iterable(
-            pattern["onFeatures"] for pattern in allowed_patterns.values()
+        sum(
+            (pattern["onFeatures"] for pattern in allowed_patterns.values()),
+            [],
         )
     )
 
-    required_features = get_required_system_features(parsed_drv)
-    required_features = list(
-        filter(known_features.__contains__, required_features)
+    required_features = (
+        get_required_system_features(parsed_drv) & known_features
     )
 
-    mounts = prune_paths(
-        discover_reachable_paths(
-            enumerate_patterns(allowed_patterns, required_features)
-        )
+    required_patterns = [
+        pattern
+        for pattern in allowed_patterns.values()
+        if set(pattern["onFeatures"]) & required_features
+    ]
+
+    store_paths = sum(
+        (pattern["storePaths"] for pattern in required_patterns), []
     )
+
+    reachable_paths = sum(
+        (
+            discover_reachable_paths(
+                expand_globs(pattern["paths"]),
+                pattern["unsafeFollowSymlinks"],
+            )
+            for pattern in required_patterns
+        ),
+        [],
+    )
+
+    unique_paths = prune_paths(store_paths + reachable_paths)
+
+    mounts = [(path, path) for path in unique_paths]
 
     # the pre-build-hook command
     if args.issue_command == "always" or (
         args.issue_command == "conditional" and mounts
     ):
         print("extra-sandbox-paths")
-        print_paths = True
-    else:
-        print_paths = False
-
-    # arguments, one per line
-    for guest_path_str, host_path_str in mounts if print_paths else []:
-        print(f"{guest_path_str}={host_path_str}")
+        for guest_path_str, host_path_str in mounts:
+            print(f"{guest_path_str}={host_path_str}")
 
     # terminated by an empty line
     something_to_terminate = args.issue_stop == "conditional" and mounts
