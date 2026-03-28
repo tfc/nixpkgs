@@ -8,6 +8,8 @@ from nix_required_mounts import (
     discover_reachable_paths,
     symlink_closure,
     expand_globs,
+    Pattern,
+    path_closure,
 )
 import os
 import pytest
@@ -98,20 +100,36 @@ def test_pattern_extraction(tree):
         }
     )
 
-    allowed_patterns = {
-        "a": {
-            "onFeatures": ["feature_a", "feature_a1"],
-            "paths": [root / "a", root / "b"],
-            "unsafeFollowSymlinks": True,
-        },
-        "b": {
-            "onFeatures": ["feature_b", "feature_b2"],
-            "paths": [root / "d", root / "f"],
-            "unsafeFollowSymlinks": True,
-        },
+    a = {
+        "onFeatures": ["feature_a", "feature_a1"],
+        "paths": list(map(str, [root / "a", root / "b"])),
+        "storePaths": [],
+        "unsafeFollowSymlinks": True,
     }
 
-    # TODO: test something
+    assert path_closure(a) == [
+        (str(root / "a"), str(root / "a")),
+        (str(root / "b"), str(root / "b")),
+    ]
+
+    b = {
+        "onFeatures": ["feature_b", "feature_b2"],
+        "paths": list(map(str, [root / "d", root / "f"])),
+        "storePaths": [],
+        "unsafeFollowSymlinks": True,
+    }
+
+    assert path_closure(b) == [
+        (str(root / "d"), str(root / "d")),
+        (str(root / "f"), str(root / "f")),
+    ]
+
+    b2 = b | {"mountTranslations": [{"host": str(root), "guest": "/usr/lib"}]}
+
+    assert path_closure(b2) == [
+        ("/usr/lib/d", str(root / "d")),
+        ("/usr/lib/f", str(root / "f")),
+    ]
 
 
 def test_glob_expansion(tree):

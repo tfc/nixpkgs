@@ -26,7 +26,7 @@ class Mount(TypedDict):
 
 class Pattern(TypedDict):
     onFeatures: list[str]
-    paths: list[Glob]
+    paths: NotRequired[list[Glob]]
     unsafeFollowSymlinks: bool
     storePaths: list[PathString]
     mountTranslations: NotRequired[list[Mount]]
@@ -202,7 +202,74 @@ def parse_derivation(
     return parsed_drv[canon_drv_path]
 
 
-def entrypoint():
+def translate_mount(path_str: PathString, mounts: list[Mount]) -> PathString:
+    """Translates paths if they match known mount prefixes
+
+    >>> mounts = [
+    ...   {"host": "/a", "guest": "/b"},
+    ...   {"host": "/foo", "guest": "/baz"}
+    ... ]
+    >>> translate_mount("/some/path", mounts)
+    '/some/path'
+    >>> translate_mount("/foo/bar", mounts)
+    '/baz/bar'
+    >>> translate_mount("/a/bar", mounts)
+    '/b/bar'
+    """
+    path = Path(path_str)
+
+    for mount in mounts:
+        prefix = Path(mount["host"])
+        target = Path(mount["guest"])
+
+        if path.is_relative_to(prefix):
+            suffix = path.relative_to(prefix)
+            return str(target / suffix)
+
+    return path_str
+
+
+def path_closure(pattern: Pattern) -> list[tuple[PathString, PathString]]:
+    paths = prune_paths(
+        discover_reachable_paths(
+            expand_globs(pattern["paths"]), pattern["unsafeFollowSymlinks"]
+        )
+    )
+
+    translations = pattern.get("mountTranslations")
+    if not translations:
+        return [(x, x) for x in paths]
+
+    return [(translate_mount(x, translations), x) for x in paths]
+
+
+def patterns_for_features(
+    patterns: AllowedPatterns, features: set[str]
+) -> AllowedPatterns:
+    """
+    >>> patterns = {
+    ...   "a": {
+    ...     "onFeatures": ["a"],
+    ...     "unsafeFollowSymlinks": True,
+    ...     "storePaths": []
+    ...   },
+    ...   "b": {
+    ...     "onFeatures": ["b"],
+    ...     "unsafeFollowSymlinks": True,
+    ...     "storePaths": []
+    ...   }
+    ... }
+    >>> list(patterns_for_features(patterns, {"a"}).keys())
+    ['a']
+    >>> list(patterns_for_features(patterns, {"a", "b"}).keys())
+    ['a', 'b']
+    """
+    return {
+        k: v for k, v in patterns.items() if set(v["onFeatures"]) & features
+    }
+
+
+def entrypoint() -> None:
     args = parser.parse_args()
 
     VERBOSITY_LEVELS = [logging.ERROR, logging.INFO, logging.DEBUG]
@@ -211,45 +278,26 @@ def entrypoint():
     logging.basicConfig(level=VERBOSITY_LEVELS[level_index])
 
     with open(args.patterns, "r") as f:
-        allowed_patterns = json.load(f)
+        patterns = json.load(f)
 
-    parsed_drv = parse_derivation(args.derivation_path, args.nix_exe)
-
-    known_features = set(
-        sum(
-            (pattern["onFeatures"] for pattern in allowed_patterns.values()),
-            [],
-        )
+    parsed_drv: dict = parse_derivation(args.derivation_path, args.nix_exe)
+    features: set[str] = get_required_system_features(parsed_drv)
+    required_patterns: AllowedPatterns = patterns_for_features(
+        patterns, features
     )
 
-    required_features = (
-        get_required_system_features(parsed_drv) & known_features
+    for pattern in required_patterns:
+        print(pattern)
+
+    store_paths = chain.from_iterable(
+        (pattern["storePaths"] for pattern in required_patterns.values())
     )
 
-    required_patterns = [
-        pattern
-        for pattern in allowed_patterns.values()
-        if set(pattern["onFeatures"]) & required_features
-    ]
-
-    store_paths = sum(
-        (pattern["storePaths"] for pattern in required_patterns), []
+    host_mounts = chain.from_iterable(
+        (path_closure(pattern) for pattern in required_patterns.values())
     )
 
-    reachable_paths = sum(
-        (
-            discover_reachable_paths(
-                expand_globs(pattern["paths"]),
-                pattern["unsafeFollowSymlinks"],
-            )
-            for pattern in required_patterns
-        ),
-        [],
-    )
-
-    unique_paths = prune_paths(store_paths + reachable_paths)
-
-    mounts = [(path, path) for path in unique_paths]
+    mounts = [(path, path) for path in store_paths] + list(host_mounts)
 
     # the pre-build-hook command
     if args.issue_command == "always" or (
@@ -258,6 +306,7 @@ def entrypoint():
         print("extra-sandbox-paths")
         for guest_path_str, host_path_str in mounts:
             print(f"{guest_path_str}={host_path_str}")
+        print()
 
     # terminated by an empty line
     something_to_terminate = args.issue_stop == "conditional" and mounts
