@@ -26,10 +26,8 @@ class Mount(TypedDict):
 
 class Pattern(TypedDict):
     onFeatures: list[str]
-    paths: NotRequired[list[Glob]]
+    paths: list[Glob | Mount]
     unsafeFollowSymlinks: bool
-    storePaths: list[PathString]
-    mountTranslations: NotRequired[list[Mount]]
 
 
 AllowedPatterns: TypeAlias = dict[str, Pattern]
@@ -188,7 +186,7 @@ def discover_reachable_paths(
     return reachable_paths
 
 
-def prune_paths(inputs: list[PathString]) -> list[PathString]:
+def prune_paths(inputs: Iterable[PathString]) -> list[PathString]:
     """
     From a list of paths prune all paths that are subdirectories of others
 
@@ -197,9 +195,6 @@ def prune_paths(inputs: list[PathString]) -> list[PathString]:
     >>> prune_paths(["/a/b/c", "/a/b"])
     ['/a/b']
     """
-    if len(inputs) < 2:
-        return inputs
-
     sorted_inputs = sorted(inputs)
     pruned = [sorted_inputs[0]]
 
@@ -212,45 +207,54 @@ def prune_paths(inputs: list[PathString]) -> list[PathString]:
     return pruned
 
 
-def translate_mount(path_str: PathString, mounts: list[Mount]) -> PathString:
-    """Translates paths if they match known mount prefixes
-
-    >>> mounts = [
-    ...   {"host": "/a", "guest": "/b"},
-    ...   {"host": "/foo", "guest": "/baz"}
-    ... ]
-    >>> translate_mount("/some/path", mounts)
-    '/some/path'
-    >>> translate_mount("/foo/bar", mounts)
-    '/baz/bar'
-    >>> translate_mount("/a/bar", mounts)
-    '/b/bar'
-    """
-    path = Path(path_str)
-
-    for mount in mounts:
-        prefix = Path(mount["host"])
-        target = Path(mount["guest"])
-
-        if path.is_relative_to(prefix):
-            suffix = path.relative_to(prefix)
-            return str(target / suffix)
-
-    return path_str
-
-
 def path_closure(pattern: Pattern) -> list[tuple[PathString, PathString]]:
-    paths = prune_paths(
-        discover_reachable_paths(
-            expand_globs(pattern["paths"]), pattern["unsafeFollowSymlinks"]
+    """
+    This function extracts all paths from a pattern into the following:
+    - list of nix store paths
+    - host/hardware specific paths (anything outside the nix store)
+    - translations from host to guest (necessary for some non-NixOS hosts)
+
+    As the host paths are often multiple levels of symlinks, these can to be
+    followed to be able to provide them all in the sandbox as they would
+    otherwise be broken (see `unsafeFollowSymlinks`).
+
+    The finally returned list contains tuples with guest-host mappings between
+    those paths. Most of them are 1:1.
+    """
+    # All nix store paths have been statically calculated before.
+    # There is no need to look into them or add anything
+    store_paths = [
+        p
+        for p in pattern["paths"]
+        if isinstance(p, PathString) and p.startswith("/nix/store")
+    ]
+    # Paths that e.g. point to /dev/... or /run/... paths etc. might further
+    # point to other paths and these need to be added to the sandbox, too.
+    host_paths = [
+        p
+        for p in pattern["paths"]
+        if isinstance(p, PathString) and not p.startswith("/nix/store")
+    ]
+    # Translations on the non-NixOS hosts like e.g. /usr/lib to /run/opengl-driver
+    # need to be applied on the final path list
+    translations: dict[PathString, PathString] = {
+        p["host"]: p["guest"]
+        for p in pattern["paths"]
+        if not isinstance(p, PathString)
+    }
+
+    host_paths.extend(translations.keys())
+
+    all_paths = prune_paths(
+        chain(
+            store_paths,
+            discover_reachable_paths(
+                expand_globs(host_paths), pattern["unsafeFollowSymlinks"]
+            ),
         )
     )
 
-    translations = pattern.get("mountTranslations")
-    if not translations:
-        return [(x, x) for x in paths]
-
-    return [(translate_mount(x, translations), x) for x in paths]
+    return [(translations.get(x, x), x) for x in all_paths]
 
 
 def patterns_for_features(
@@ -262,12 +266,12 @@ def patterns_for_features(
     ...   "a": {
     ...     "onFeatures": ["a"],
     ...     "unsafeFollowSymlinks": True,
-    ...     "storePaths": []
+    ...     "paths": []
     ...   },
     ...   "b": {
     ...     "onFeatures": ["b"],
     ...     "unsafeFollowSymlinks": True,
-    ...     "storePaths": []
+    ...     "paths": []
     ...   }
     ... }
     >>> list(patterns_for_features(patterns, {"a"}).keys())
@@ -297,18 +301,11 @@ def entrypoint() -> None:
         patterns, features
     )
 
-    for pattern in required_patterns:
-        print(pattern)
-
-    store_paths = chain.from_iterable(
-        (pattern["storePaths"] for pattern in required_patterns.values())
+    mounts = list(
+        chain.from_iterable(
+            (path_closure(pattern) for pattern in required_patterns.values())
+        )
     )
-
-    host_mounts = chain.from_iterable(
-        (path_closure(pattern) for pattern in required_patterns.values())
-    )
-
-    mounts = [(path, path) for path in store_paths] + list(host_mounts)
 
     # the pre-build-hook command
     if args.issue_command == "always" or (

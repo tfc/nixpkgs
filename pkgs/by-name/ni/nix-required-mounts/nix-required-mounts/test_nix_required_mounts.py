@@ -129,12 +129,15 @@ def test_pattern_extraction(tree):
         }
     )
 
-    def pairs(paths: list[PathString]) -> list[tuple[str, str]]:
-        return [(str(x), str(x)) for x in paths]
+    def strs(paths: list[Path]) -> list[PathString]:
+        return [str(x) if isinstance(x, Path) else x for x in paths]
+
+    def pairs(paths: list[Path]) -> list[tuple[str, str]]:
+        return [(x, x) for x in strs(paths)]
 
     a = {
         "onFeatures": ["feature_a", "feature_a1"],
-        "paths": list(map(str, [root / "c"])),
+        "paths": [str(root / "c")],
         "storePaths": [],
         "unsafeFollowSymlinks": True,
     }
@@ -147,7 +150,7 @@ def test_pattern_extraction(tree):
 
     b = {
         "onFeatures": ["feature_b", "feature_b2"],
-        "paths": list(map(str, [root / "d", root / "f"])),
+        "paths": strs([root / "d", root / "f"]),
         "storePaths": [],
         "unsafeFollowSymlinks": True,
     }
@@ -159,11 +162,21 @@ def test_pattern_extraction(tree):
         ]
     )
 
-    b2 = b | {"mountTranslations": [{"host": str(root), "guest": "/usr/lib"}]}
+    with_mounts = {
+        "onFeatures": ["feature_b", "feature_b2"],
+        "paths": strs(
+            [
+                root / "d",  # prevent formatter
+                root / "f",
+                {"host": str(root), "guest": "/foo/bar"},
+            ]
+        ),
+        "storePaths": [],
+        "unsafeFollowSymlinks": True,
+    }
 
-    assert path_closure(b2) == [
-        ("/usr/lib/d", str(root / "d")),
-        ("/usr/lib/f", str(root / "f")),
+    assert path_closure(with_mounts) == [
+        ("/foo/bar", str(root)),
     ]
 
 
