@@ -314,7 +314,6 @@ def entrypoint() -> None:
         print("extra-sandbox-paths")
         for guest_path_str, host_path_str in mounts:
             print(f"{guest_path_str}={host_path_str}")
-        print()
 
     # terminated by an empty line
     something_to_terminate = args.issue_stop == "conditional" and mounts
