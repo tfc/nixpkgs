@@ -10,10 +10,6 @@
   logToStderr ? true,
 }:
 
-let
-  oz = x: if x then "1" else "0";
-in
-
 stdenv.mkDerivation (finalAttrs: {
   pname = "apulse";
   version = "0.1.14";
@@ -36,8 +32,8 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   cmakeFlags = [
-    "-DWITH_TRACE=${oz tracingSupport}"
-    "-DLOG_TO_STDERR=${oz logToStderr}"
+    (lib.cmakeBool "WITH_TRACE" tracingSupport)
+    (lib.cmakeBool "LOG_TO_STDERR" logToStderr)
   ];
 
   meta = {
