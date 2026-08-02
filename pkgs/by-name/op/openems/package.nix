@@ -52,7 +52,7 @@ stdenv.mkDerivation (finalAttrs: {
     cmake
   ];
 
-  cmakeFlags = lib.optionals withMPI [ "-DWITH_MPI=ON" ];
+  cmakeFlags = [ (lib.cmakeBool "WITH_MPI" withMPI) ];
 
   buildInputs = [
     fparser
