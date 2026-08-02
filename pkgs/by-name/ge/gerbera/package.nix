@@ -149,7 +149,7 @@ stdenv.mkDerivation (finalAttrs: {
     # systemd service will be generated alongside the service
     "-DWITH_SYSTEMD=OFF"
   ]
-  ++ map (e: "-DWITH_${e.name}=${if e.enable then "ON" else "OFF"}") options;
+  ++ map (e: lib.cmakeBool "WITH_${e.name}" e.enable) options;
 
   nativeBuildInputs = [
     cmake
