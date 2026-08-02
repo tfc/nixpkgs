@@ -26,12 +26,11 @@ stdenv.mkDerivation {
   ]
   ++ lib.optional withProcps procps;
 
-  cmakeFlags =
-    lib.optionals (!withProcps) [ "-DWITH_PROCPS=OFF" ]
-    ++ lib.optionals (stdenv.hostPlatform.isDarwin || !stdenv.hostPlatform.isx86) [
-      "-DWITH_SUPERCOP=OFF"
-    ]
-    ++ lib.optionals (!stdenv.hostPlatform.isx86) [ "-DCURVE=ALT_BN128" ];
+  cmakeFlags = [
+    (lib.cmakeBool "WITH_PROCPS" withProcps)
+    (lib.cmakeBool "WITH_SUPERCOP" (!(stdenv.hostPlatform.isDarwin || !stdenv.hostPlatform.isx86)))
+  ]
+  ++ lib.optional (!stdenv.hostPlatform.isx86) "-DCURVE=ALT_BN128";
 
   src = fetchFromGitHub {
     owner = "scipr-lab";
