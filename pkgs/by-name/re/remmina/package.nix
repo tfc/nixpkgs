@@ -109,11 +109,11 @@ stdenv.mkDerivation (finalAttrs: {
 
   cmakeFlags = [
     "-DWITH_FREERDP3=ON"
-    "-DWITH_VTE=${if withVte then "ON" else "OFF"}"
     "-DWITH_TELEPATHY=OFF"
     "-DWITH_AVAHI=OFF"
-    "-DWITH_LIBSECRET=${if withLibsecret then "ON" else "OFF"}"
-    "-DWITH_WEBKIT2GTK=${if withWebkitGtk then "ON" else "OFF"}"
+    (lib.cmakeBool "WITH_VTE" withVte)
+    (lib.cmakeBool "WITH_LIBSECRET" withLibsecret)
+    (lib.cmakeBool "WITH_WEBKIT2GTK" withWebkitGtk)
   ]
   ++ lib.optionals stdenv.hostPlatform.isDarwin [
     "-DHAVE_LIBAPPINDICATOR=OFF"
