@@ -67,11 +67,11 @@ stdenv.mkDerivation (finalAttrs: {
 
   cmakeFlags = [
     "-DGIT_VERSION=OFF"
-    "-DUSE_POPPLER=${if usePoppler then "ON" else "OFF"}"
-    "-DUSE_MUPDF=${if useMupdf then "ON" else "OFF"}"
+    (lib.cmakeBool "USE_POPPLER" usePoppler)
+    (lib.cmakeBool "USE_MUPDF" useMupdf)
     "-DUSE_QTPDF=OFF"
     "-DLINK_MUPDF_THIRD=OFF"
-    "-DUSE_EXTERNAL_RENDERER=${if useExternalRenderer then "ON" else "OFF"}"
+    (lib.cmakeBool "USE_EXTERNAL_RENDERER" useExternalRenderer)
     "-DLINK_MUJS=OFF"
     "-DLINK_GUMBO=ON"
     "-DUSE_TRANSLATIONS=ON"
