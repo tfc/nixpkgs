@@ -436,8 +436,8 @@ stdenv.mkDerivation (
       "-DENABLE_EVENTCLIENTS=ON"
       "-DENABLE_INTERNAL_CROSSGUID=OFF"
       "-DENABLE_INTERNAL_RapidJSON=OFF"
-      "-DENABLE_OPTICAL=${if opticalSupport then "ON" else "OFF"}"
-      "-DENABLE_VDPAU=${if vdpauSupport then "ON" else "OFF"}"
+      (lib.cmakeBool "ENABLE_OPTICAL" opticalSupport)
+      (lib.cmakeBool "ENABLE_VDPAU" vdpauSupport)
       "-DLIRC_DEVICE=/run/lirc/lircd"
       "-DSWIG_EXECUTABLE=${buildPackages.swig}/bin/swig"
       "-DFLATBUFFERS_FLATC_EXECUTABLE=${buildPackages.flatbuffers}/bin/flatc"
