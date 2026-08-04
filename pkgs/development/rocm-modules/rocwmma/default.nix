@@ -66,8 +66,8 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   cmakeFlags = [
-    "-DROCWMMA_BUILD_TESTS=${if buildTests || buildBenchmarks then "ON" else "OFF"}"
-    "-DROCWMMA_BUILD_SAMPLES=${if buildSamples then "ON" else "OFF"}"
+    (lib.cmakeBool "ROCWMMA_BUILD_TESTS" (buildTests || buildBenchmarks))
+    (lib.cmakeBool "ROCWMMA_BUILD_SAMPLES" buildSamples)
     # Manually define CMAKE_INSTALL_<DIR>
     # See: https://github.com/NixOS/nixpkgs/pull/197838
     "-DCMAKE_INSTALL_BINDIR=bin"
