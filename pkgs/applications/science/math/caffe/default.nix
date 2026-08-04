@@ -25,8 +25,6 @@
 }:
 
 let
-  toggle = bool: if bool then "ON" else "OFF";
-
   test_model_weights = fetchurl {
     url = "http://dl.caffe.berkeleyvision.org/bvlc_reference_caffenet.caffemodel";
     sha256 = "472d4a06035497b180636d8a82667129960371375bd10fcb6df5c6c7631f25e0";
@@ -57,8 +55,8 @@ stdenv.mkDerivation rec {
       "-DBLAS=open"
       "-DCPU_ONLY=ON"
     ]
-    ++ [ "-DUSE_LEVELDB=${toggle leveldbSupport}" ]
-    ++ [ "-DUSE_LMDB=${toggle lmdbSupport}" ];
+    ++ [ (lib.cmakeBool "USE_LEVELDB" leveldbSupport) ]
+    ++ [ (lib.cmakeBool "USE_LMDB" lmdbSupport) ];
 
   buildInputs = [
     boost
