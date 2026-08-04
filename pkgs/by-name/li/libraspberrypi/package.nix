@@ -27,7 +27,7 @@ stdenv.mkDerivation {
   cmakeFlags = [
     # -DARM64=ON disables all targets that only build on 32-bit ARM; this allows
     # the package to build on aarch64 and other architectures
-    "-DARM64=${if stdenv.hostPlatform.isAarch32 then "OFF" else "ON"}"
+    (lib.cmakeBool "ARM64" (!stdenv.hostPlatform.isAarch32))
     "-DVMCS_INSTALL_PREFIX=${placeholder "out"}"
     (lib.cmakeFeature "CMAKE_POLICY_VERSION_MINIMUM" "3.10")
   ];
