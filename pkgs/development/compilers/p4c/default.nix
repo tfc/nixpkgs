@@ -24,9 +24,6 @@
   enableGTests ? true,
   enableMultithreading ? false,
 }:
-let
-  toCMakeBoolean = v: if v then "ON" else "OFF";
-in
 stdenv.mkDerivation (finalAttrs: {
   pname = "p4c";
   version = "1.2.4.1";
@@ -55,17 +52,17 @@ stdenv.mkDerivation (finalAttrs: {
   '';
 
   cmakeFlags = [
-    "-DENABLE_BMV2=${toCMakeBoolean enableBMV2}"
-    "-DENABLE_EBPF=${toCMakeBoolean enableBPF}"
-    "-DENABLE_UBPF=${toCMakeBoolean enableBPF}"
-    "-DENABLE_DPDK=${toCMakeBoolean enableDPDK}"
-    "-DENABLE_P4C_GRAPHS=${toCMakeBoolean enableGraphBackend}"
-    "-DENABLE_P4TEST=${toCMakeBoolean enableP4Tests}"
-    "-DENABLE_DOCS=${toCMakeBoolean enableDocumentation}"
+    (lib.cmakeBool "ENABLE_BMV2" enableBMV2)
+    (lib.cmakeBool "ENABLE_EBPF" enableBPF)
+    (lib.cmakeBool "ENABLE_UBPF" enableBPF)
+    (lib.cmakeBool "ENABLE_DPDK" enableDPDK)
+    (lib.cmakeBool "ENABLE_P4C_GRAPHS" enableGraphBackend)
+    (lib.cmakeBool "ENABLE_P4TEST" enableP4Tests)
+    (lib.cmakeBool "ENABLE_DOCS" enableDocumentation)
     "-DENABLE_GC=ON"
-    "-DENABLE_GTESTS=${toCMakeBoolean enableGTests}"
+    (lib.cmakeBool "ENABLE_GTESTS" enableGTests)
     "-DENABLE_PROTOBUF_STATIC=OFF" # static protobuf has been removed since 3.21.6
-    "-DENABLE_MULTITHREAD=${toCMakeBoolean enableMultithreading}"
+    (lib.cmakeBool "ENABLE_MULTITHREAD" enableMultithreading)
     "-DENABLE_GMP=ON"
   ];
 
