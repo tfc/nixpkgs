@@ -303,7 +303,7 @@ stdenv.mkDerivation {
   ]
   ++ lib.optionals (!stdenv.hostPlatform.isDarwin) [
     "-DQT_FEATURE_sctp=ON"
-    "-DQT_FEATURE_journald=${if systemdSupport then "ON" else "OFF"}"
+    (lib.cmakeBool "QT_FEATURE_journald" systemdSupport)
   ]
   ++ lib.optionals stdenv.hostPlatform.isDarwin [
     "-DQT_FEATURE_rpath=OFF"
