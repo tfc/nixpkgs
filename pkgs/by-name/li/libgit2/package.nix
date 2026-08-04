@@ -45,7 +45,7 @@ stdenv.mkDerivation (finalAttrs: {
     "-DUSE_SSH=ON"
     (lib.cmakeBool "USE_GSSAPI" withGssapi)
     (lib.cmakeBool "EXPERIMENTAL_SHA256" withExperimentalSha256)
-    "-DBUILD_SHARED_LIBS=${if staticBuild then "OFF" else "ON"}"
+    (lib.cmakeBool "BUILD_SHARED_LIBS" (!staticBuild))
   ]
   ++ lib.optionals stdenv.hostPlatform.isWindows [
     "-DDLLTOOL=${stdenv.cc.bintools.targetPrefix}dlltool"
