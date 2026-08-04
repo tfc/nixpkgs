@@ -61,8 +61,8 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   cmakeFlags = [
-    "-Dwith-python=${if withPython then "ON" else "OFF"}"
-    "-Dwith-mpi=${if withMpi then "ON" else "OFF"}"
+    (lib.cmakeBool "with-python" withPython)
+    (lib.cmakeBool "with-mpi" withMpi)
     "-Dwith-openmp=ON"
   ];
 
