@@ -40,14 +40,10 @@ stdenv.mkDerivation (finalAttrs: {
     openssl.dev
   ];
 
-  cmakeFlags =
-    (lib.attrsets.mapAttrsToList
-      (name: value: "-DCASS_BUILD_${name}:BOOL=${if value then "ON" else "OFF"}")
-      {
-        EXAMPLES = examples;
-      }
-    )
-    ++ [ "-DLIBUV_INCLUDE_DIR=${lib.getDev libuv}/include" ];
+  cmakeFlags = [
+    (lib.cmakeBool "CASS_BUILD_EXAMPLES" examples)
+    "-DLIBUV_INCLUDE_DIR=${lib.getDev libuv}/include"
+  ];
 
   meta = {
     description = "DataStax CPP cassandra driver";
