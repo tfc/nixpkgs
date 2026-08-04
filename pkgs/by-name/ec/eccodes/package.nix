@@ -58,10 +58,10 @@ gccStdenv.mkDerivation rec {
   ];
 
   cmakeFlags = [
-    "-DENABLE_PYTHON=${if enablePython then "ON" else "OFF"}"
+    (lib.cmakeBool "ENABLE_PYTHON" enablePython)
     "-DENABLE_PNG=ON"
-    "-DENABLE_ECCODES_THREADS=${if enablePosixThreads then "ON" else "OFF"}"
-    "-DENABLE_ECCODES_OMP_THREADS=${if enableOpenMPThreads then "ON" else "OFF"}"
+    (lib.cmakeBool "ENABLE_ECCODES_THREADS" enablePosixThreads)
+    (lib.cmakeBool "ENABLE_ECCODES_OMP_THREADS" enableOpenMPThreads)
   ];
 
   doCheck = true;
