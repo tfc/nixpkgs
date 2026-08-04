@@ -46,7 +46,7 @@ stdenv.mkDerivation (finalAttrs: {
   cmakeFlags = [
     # .pc file uses INCLUDEDIR as a relative path
     "-DCMAKE_INSTALL_INCLUDEDIR=include"
-    "-DJSON_BuildTests=${if finalAttrs.finalPackage.doCheck then "ON" else "OFF"}"
+    (lib.cmakeBool "JSON_BuildTests" finalAttrs.finalPackage.doCheck)
     "-DJSON_FastTests=ON"
     "-DJSON_MultipleHeaders=ON"
   ]
