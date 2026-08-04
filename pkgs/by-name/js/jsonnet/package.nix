@@ -39,10 +39,10 @@ stdenv.mkDerivation (finalAttrs: {
 
   cmakeFlags = [
     "-DUSE_SYSTEM_GTEST=ON"
-    "-DBUILD_STATIC_LIBS=${if stdenv.hostPlatform.isStatic then "ON" else "OFF"}"
+    (lib.cmakeBool "BUILD_STATIC_LIBS" stdenv.hostPlatform.isStatic)
   ]
   ++ lib.optionals (!stdenv.hostPlatform.isDarwin) [
-    "-DBUILD_SHARED_BINARIES=${if stdenv.hostPlatform.isStatic then "OFF" else "ON"}"
+    (lib.cmakeBool "BUILD_SHARED_BINARIES" (!stdenv.hostPlatform.isStatic))
   ];
 
   enableParallelBuilding = true;
