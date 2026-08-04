@@ -32,7 +32,7 @@ stdenv.mkDerivation (finalAttrs: {
   cmakeFlags = [
     # networkmanager relies on libjansson.so:
     #   https://github.com/NixOS/nixpkgs/pull/176302#issuecomment-1150239453
-    "-DJANSSON_BUILD_SHARED_LIBS=${if stdenv.hostPlatform.isStatic then "OFF" else "ON"}"
+    (lib.cmakeBool "JANSSON_BUILD_SHARED_LIBS" (!stdenv.hostPlatform.isStatic))
 
     # Fix the build with CMake 4.
     #
