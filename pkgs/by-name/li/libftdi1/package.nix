@@ -19,7 +19,6 @@
 
 let
   inherit (lib) optionals optionalString;
-  onOff = a: if a then "ON" else "OFF";
 in
 stdenv.mkDerivation {
   pname = "libftdi";
@@ -58,11 +57,11 @@ stdenv.mkDerivation {
   buildInputs = [ libconfuse ] ++ optionals cppSupport [ boost ];
 
   cmakeFlags = [
-    "-DFTDIPP=${onOff cppSupport}"
-    "-DBUILD_TESTS=${onOff cppSupport}"
-    "-DLINK_PYTHON_LIBRARY=${onOff pythonSupport}"
-    "-DPYTHON_BINDINGS=${onOff pythonSupport}"
-    "-DDOCUMENTATION=${onOff docSupport}"
+    (lib.cmakeBool "FTDIPP" cppSupport)
+    (lib.cmakeBool "BUILD_TESTS" cppSupport)
+    (lib.cmakeBool "LINK_PYTHON_LIBRARY" pythonSupport)
+    (lib.cmakeBool "PYTHON_BINDINGS" pythonSupport)
+    (lib.cmakeBool "DOCUMENTATION" docSupport)
   ]
   ++ lib.optionals pythonSupport [
     "-DPYTHON_EXECUTABLE=${python3.pythonOnBuildForHost.interpreter}"
