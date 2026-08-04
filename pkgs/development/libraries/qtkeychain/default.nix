@@ -23,7 +23,7 @@ stdenv.mkDerivation rec {
   dontWrapQtApps = true;
 
   cmakeFlags = [
-    "-DBUILD_WITH_QT5=${if lib.versions.major qtbase.version == "5" then "ON" else "OFF"}"
+    (lib.cmakeBool "BUILD_WITH_QT5" (lib.versions.major qtbase.version == "5"))
     "-DQT_TRANSLATIONS_DIR=share/qt/translations"
   ];
 
