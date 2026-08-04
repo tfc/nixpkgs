@@ -65,7 +65,7 @@ stdenv.mkDerivation (finalAttrs: {
   '';
 
   cmakeFlags = [
-    "-DINSTALL_EXAMPLE_SCRIPTS=${if installExampleScripts then "ON" else "OFF"}"
+    (lib.cmakeBool "INSTALL_EXAMPLE_SCRIPTS" installExampleScripts)
     "-DINSTALL_DOCUMENTATION=ON"
     "-DWITH_GBM=ON"
   ];
