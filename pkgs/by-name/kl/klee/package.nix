@@ -93,25 +93,21 @@ llvmPackages.stdenv.mkDerivation (finalAttrs: {
     else
       "MinSizeRel";
 
-  cmakeFlags =
-    let
-      onOff = val: if val then "ON" else "OFF";
-    in
-    [
-      "-DKLEE_RUNTIME_BUILD_TYPE=${if debugRuntime then "Debug" else "Release"}"
-      "-DLLVMCC=${llvmPackages.clang}/bin/clang"
-      "-DLLVMCXX=${llvmPackages.clang}/bin/clang++"
-      "-DKLEE_ENABLE_TIMESTAMP=${onOff false}"
-      "-DKLEE_UCLIBC_PATH=${chosenKleeuClibc}"
-      "-DENABLE_KLEE_ASSERTS=${onOff asserts}"
-      "-DENABLE_POSIX_RUNTIME=${onOff true}"
-      "-DENABLE_UNIT_TESTS=${onOff true}"
-      "-DENABLE_SYSTEM_TESTS=${onOff true}"
-      "-DLIT_ARGS=--verbose"
-      "-DGTEST_SRC_DIR=${gtest.src}"
-      "-DGTEST_INCLUDE_DIR=${gtest.src}/googletest/include"
-      "-Wno-dev"
-    ];
+  cmakeFlags = [
+    "-DKLEE_RUNTIME_BUILD_TYPE=${if debugRuntime then "Debug" else "Release"}"
+    "-DLLVMCC=${llvmPackages.clang}/bin/clang"
+    "-DLLVMCXX=${llvmPackages.clang}/bin/clang++"
+    (lib.cmakeBool "KLEE_ENABLE_TIMESTAMP" false)
+    "-DKLEE_UCLIBC_PATH=${chosenKleeuClibc}"
+    (lib.cmakeBool "ENABLE_KLEE_ASSERTS" asserts)
+    (lib.cmakeBool "ENABLE_POSIX_RUNTIME" true)
+    (lib.cmakeBool "ENABLE_UNIT_TESTS" true)
+    (lib.cmakeBool "ENABLE_SYSTEM_TESTS" true)
+    "-DLIT_ARGS=--verbose"
+    "-DGTEST_SRC_DIR=${gtest.src}"
+    "-DGTEST_INCLUDE_DIR=${gtest.src}/googletest/include"
+    "-Wno-dev"
+  ];
 
   # Silence various warnings during the compilation of fortified bitcode.
   env.NIX_CFLAGS_COMPILE = toString [ "-Wno-macro-redefined" ];
