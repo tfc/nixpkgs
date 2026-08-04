@@ -33,7 +33,7 @@ stdenv.mkDerivation (finalAttrs: {
   cmakeFlags = [
     "-DABSL_BUILD_TEST_HELPERS=ON"
     "-DABSL_USE_EXTERNAL_GOOGLETEST=ON"
-    "-DBUILD_SHARED_LIBS=${if static then "OFF" else "ON"}"
+    (lib.cmakeBool "BUILD_SHARED_LIBS" (!static))
   ]
   ++ lib.optionals (cxxStandard != null) [
     "-DCMAKE_CXX_STANDARD=${cxxStandard}"
