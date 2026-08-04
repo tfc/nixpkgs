@@ -34,7 +34,7 @@ stdenv.mkDerivation (finalAttrs: {
   ++ lib.optionals finalAttrs.finalPackage.doCheck [ libpcap ];
 
   cmakeFlags = [
-    "-DBNGBLASTER_TESTS=${if finalAttrs.finalPackage.doCheck then "ON" else "OFF"}"
+    (lib.cmakeBool "BNGBLASTER_TESTS" finalAttrs.finalPackage.doCheck)
     "-DBNGBLASTER_VERSION=${finalAttrs.version}"
   ];
 
