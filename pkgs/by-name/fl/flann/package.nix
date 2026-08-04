@@ -66,7 +66,7 @@ stdenv.mkDerivation (finalAttrs: {
     "-DBUILD_EXAMPLES:BOOL=OFF"
     "-DBUILD_TESTS:BOOL=OFF"
     "-DBUILD_MATLAB_BINDINGS:BOOL=OFF"
-    "-DBUILD_PYTHON_BINDINGS:BOOL=${if enablePython then "ON" else "OFF"}"
+    (lib.cmakeBool "BUILD_PYTHON_BINDINGS" enablePython)
   ];
 
   nativeBuildInputs = [
