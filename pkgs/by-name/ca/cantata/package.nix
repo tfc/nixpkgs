@@ -51,8 +51,6 @@ assert withReplaygain -> withTaglib;
 assert withLibVlc -> withHttpStream;
 
 let
-  fstat = x: fn: "-DENABLE_${fn}=${if x then "ON" else "OFF"}";
-
   withUdisks = (withTaglib && withDevices && stdenv.hostPlatform.isLinux);
 
   gst = with gst_all_1; [
@@ -200,7 +198,7 @@ stdenv.mkDerivation (finalAttrs: {
     qt6.wrapQtAppsHook
   ];
 
-  cmakeFlags = lib.flatten (map (e: map (f: fstat e.enable f) e.names) options);
+  cmakeFlags = lib.flatten (map (e: map (fn: lib.cmakeBool "ENABLE_${fn}" e.enable) e.names) options);
 
   qtWrapperArgs = lib.optionals (withHttpStream && !withLibVlc) [
     "--prefix GST_PLUGIN_PATH : ${lib.makeSearchPathOutput "lib" "lib/gstreamer-1.0" gst}"
