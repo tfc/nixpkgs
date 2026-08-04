@@ -57,7 +57,7 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   cmakeFlags = [
-    "-DBUILD_SHARED_LIBS=${if static then "OFF" else "ON"}"
+    (lib.cmakeBool "BUILD_SHARED_LIBS" (!static))
   ]
   ++ lib.optionals (cxx_standard != null) [
     "-DCMAKE_CXX_STANDARD=${cxx_standard}"
