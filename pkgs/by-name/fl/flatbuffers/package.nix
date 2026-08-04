@@ -23,7 +23,7 @@ stdenv.mkDerivation rec {
   ];
 
   cmakeFlags = [
-    "-DFLATBUFFERS_BUILD_TESTS=${if doCheck then "ON" else "OFF"}"
+    (lib.cmakeBool "FLATBUFFERS_BUILD_TESTS" doCheck)
     "-DFLATBUFFERS_OSX_BUILD_UNIVERSAL=OFF"
   ];
 
