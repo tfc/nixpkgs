@@ -56,10 +56,10 @@ stdenv.mkDerivation rec {
   ]
   ++ lib.optionals stdenv.hostPlatform.isx86_64 [
     "-DDO_SSE_AUTODETECT=OFF"
-    "-DDISABLE_SSE3=${if stdenv.hostPlatform.sse3Support then "OFF" else "ON"}"
-    "-DDISABLE_SSE4_1=${if stdenv.hostPlatform.sse4_1Support then "OFF" else "ON"}"
-    "-DDISABLE_SSE4_2=${if stdenv.hostPlatform.sse4_2Support then "OFF" else "ON"}"
-    "-DDISABLE_SSE4_A=${if stdenv.hostPlatform.sse4_aSupport then "OFF" else "ON"}"
+    (lib.cmakeBool "DISABLE_SSE3" (!stdenv.hostPlatform.sse3Support))
+    (lib.cmakeBool "DISABLE_SSE4_1" (!stdenv.hostPlatform.sse4_1Support))
+    (lib.cmakeBool "DISABLE_SSE4_2" (!stdenv.hostPlatform.sse4_2Support))
+    (lib.cmakeBool "DISABLE_SSE4_A" (!stdenv.hostPlatform.sse4_aSupport))
   ];
 
   meta = {
