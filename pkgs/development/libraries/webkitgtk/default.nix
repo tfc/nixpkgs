@@ -214,37 +214,33 @@ clangStdenv.mkDerivation (finalAttrs: {
     libsoup_3
   ];
 
-  cmakeFlags =
-    let
-      cmakeBool = x: if x then "ON" else "OFF";
-    in
-    [
-      "-DENABLE_INTROSPECTION=ON"
-      "-DPORT=GTK"
-      "-DUSE_LIBSECRET=${cmakeBool withLibsecret}"
-      "-DENABLE_EXPERIMENTAL_FEATURES=${cmakeBool enableExperimental}"
-    ]
-    ++ lib.optionals clangStdenv.hostPlatform.isLinux [
-      # Have to be explicitly specified when cross.
-      # https://github.com/WebKit/WebKit/commit/a84036c6d1d66d723f217a4c29eee76f2039a353
-      "-DBWRAP_EXECUTABLE=${lib.getExe bubblewrap}"
-      "-DDBUS_PROXY_EXECUTABLE=${lib.getExe xdg-dbus-proxy}"
-    ]
-    ++ lib.optionals clangStdenv.hostPlatform.isDarwin [
-      "-DENABLE_GAMEPAD=OFF"
-      "-DENABLE_GTKDOC=OFF"
-      "-DENABLE_MINIBROWSER=OFF"
-      "-DENABLE_QUARTZ_TARGET=ON"
-      "-DENABLE_X11_TARGET=OFF"
-      "-DUSE_APPLE_ICU=OFF"
-      "-DUSE_OPENGL_OR_ES=OFF"
-    ]
-    ++ lib.optionals (lib.versionOlder gtk4.version "4.0") [
-      "-DUSE_GTK4=OFF"
-    ]
-    ++ lib.optionals (!systemdSupport) [
-      "-DENABLE_JOURNALD_LOG=OFF"
-    ];
+  cmakeFlags = [
+    "-DENABLE_INTROSPECTION=ON"
+    "-DPORT=GTK"
+    (lib.cmakeBool "USE_LIBSECRET" withLibsecret)
+    (lib.cmakeBool "ENABLE_EXPERIMENTAL_FEATURES" enableExperimental)
+  ]
+  ++ lib.optionals clangStdenv.hostPlatform.isLinux [
+    # Have to be explicitly specified when cross.
+    # https://github.com/WebKit/WebKit/commit/a84036c6d1d66d723f217a4c29eee76f2039a353
+    "-DBWRAP_EXECUTABLE=${lib.getExe bubblewrap}"
+    "-DDBUS_PROXY_EXECUTABLE=${lib.getExe xdg-dbus-proxy}"
+  ]
+  ++ lib.optionals clangStdenv.hostPlatform.isDarwin [
+    "-DENABLE_GAMEPAD=OFF"
+    "-DENABLE_GTKDOC=OFF"
+    "-DENABLE_MINIBROWSER=OFF"
+    "-DENABLE_QUARTZ_TARGET=ON"
+    "-DENABLE_X11_TARGET=OFF"
+    "-DUSE_APPLE_ICU=OFF"
+    "-DUSE_OPENGL_OR_ES=OFF"
+  ]
+  ++ lib.optionals (lib.versionOlder gtk4.version "4.0") [
+    "-DUSE_GTK4=OFF"
+  ]
+  ++ lib.optionals (!systemdSupport) [
+    "-DENABLE_JOURNALD_LOG=OFF"
+  ];
 
   postPatch = ''
     patchShebangs .
