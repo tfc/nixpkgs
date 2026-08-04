@@ -48,36 +48,32 @@ stdenv.mkDerivation (finalAttrs: {
     ./no-var-directories.patch # Prevent /var directories from being created
   ];
 
-  cmakeFlags =
-    let
-      mkFeatureFlag = label: value: "-DICINGA2_WITH_${label}=${if value then "ON" else "OFF"}";
-    in
-    [
-      # Paths
-      "-DCMAKE_INSTALL_SYSCONFDIR=etc"
-      "-DCMAKE_INSTALL_LOCALSTATEDIR=/var"
-      "-DCMAKE_INSTALL_FULL_SBINDIR=bin"
-      "-DICINGA2_RUNDIR=/run"
-      "-DMYSQL_INCLUDE_DIR=${mariadb-connector-c.dev}/include/mariadb"
-      "-DMYSQL_LIB=${mariadb-connector-c.out}/lib/mariadb/libmysqlclient.a"
-      "-DICINGA2_PLUGINDIR=bin"
-      "-DICINGA2_LTO_BUILD=yes"
-      # Features
-      (mkFeatureFlag "MYSQL" withMysql)
-      (mkFeatureFlag "PGSQL" withPostgresql)
-      (mkFeatureFlag "CHECKER" withChecker)
-      (mkFeatureFlag "COMPAT" withCompat)
-      (mkFeatureFlag "LIVESTATUS" withLivestatus)
-      (mkFeatureFlag "NOTIFICATION" withNotification)
-      (mkFeatureFlag "PERFDATA" withPerfdata)
-      (mkFeatureFlag "ICINGADB" withIcingadb)
-      (mkFeatureFlag "OPENTELEMETRY" withOtel)
-      # Misc.
-      "-DICINGA2_USER=icinga2"
-      "-DICINGA2_GROUP=icinga2"
-      "-DICINGA2_GIT_VERSION_INFO=OFF"
-      "-DUSE_SYSTEMD=ON"
-    ];
+  cmakeFlags = [
+    # Paths
+    "-DCMAKE_INSTALL_SYSCONFDIR=etc"
+    "-DCMAKE_INSTALL_LOCALSTATEDIR=/var"
+    "-DCMAKE_INSTALL_FULL_SBINDIR=bin"
+    "-DICINGA2_RUNDIR=/run"
+    "-DMYSQL_INCLUDE_DIR=${mariadb-connector-c.dev}/include/mariadb"
+    "-DMYSQL_LIB=${mariadb-connector-c.out}/lib/mariadb/libmysqlclient.a"
+    "-DICINGA2_PLUGINDIR=bin"
+    "-DICINGA2_LTO_BUILD=yes"
+    # Features
+    (lib.cmakeBool "ICINGA2_WITH_MYSQL" withMysql)
+    (lib.cmakeBool "ICINGA2_WITH_PGSQL" withPostgresql)
+    (lib.cmakeBool "ICINGA2_WITH_CHECKER" withChecker)
+    (lib.cmakeBool "ICINGA2_WITH_COMPAT" withCompat)
+    (lib.cmakeBool "ICINGA2_WITH_LIVESTATUS" withLivestatus)
+    (lib.cmakeBool "ICINGA2_WITH_NOTIFICATION" withNotification)
+    (lib.cmakeBool "ICINGA2_WITH_PERFDATA" withPerfdata)
+    (lib.cmakeBool "ICINGA2_WITH_ICINGADB" withIcingadb)
+    (lib.cmakeBool "ICINGA2_WITH_OPENTELEMETRY" withOtel)
+    # Misc.
+    "-DICINGA2_USER=icinga2"
+    "-DICINGA2_GROUP=icinga2"
+    "-DICINGA2_GIT_VERSION_INFO=OFF"
+    "-DUSE_SYSTEMD=ON"
+  ];
 
   outputs = [
     "out"
