@@ -19,7 +19,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   nativeBuildInputs = [ cmake ];
 
-  cmakeFlags = [ "-DBUILD_SHARED_LIBS=${if enableStatic then "OFF" else "ON"}" ];
+  cmakeFlags = [ (lib.cmakeBool "BUILD_SHARED_LIBS" (!enableStatic)) ];
 
   meta = {
     homepage = "https://github.com/AmokHuginnsson/replxx";
