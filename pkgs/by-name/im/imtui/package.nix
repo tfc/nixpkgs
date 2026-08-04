@@ -45,10 +45,10 @@ stdenv.mkDerivation rec {
   '';
 
   cmakeFlags = [
-    "-DEMSCRIPTEN:BOOL=${if withEmscripten then "ON" else "OFF"}"
-    "-DIMTUI_SUPPORT_CURL:BOOL=${if withCurl then "ON" else "OFF"}"
-    "-DIMTUI_SUPPORT_NCURSES:BOOL=${if withNcurses then "ON" else "OFF"}"
-    "-DBUILD_SHARED_LIBS:BOOL=${if (!static) then "ON" else "OFF"}"
+    (lib.cmakeBool "EMSCRIPTEN" withEmscripten)
+    (lib.cmakeBool "IMTUI_SUPPORT_CURL" withCurl)
+    (lib.cmakeBool "IMTUI_SUPPORT_NCURSES" withNcurses)
+    (lib.cmakeBool "BUILD_SHARED_LIBS" (!static))
     "-DIMTUI_BUILD_EXAMPLES:BOOL=OFF"
     "-DIMTUI_INSTALL_IMGUI_HEADERS:BOOL=OFF"
   ];
