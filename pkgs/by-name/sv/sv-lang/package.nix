@@ -27,7 +27,7 @@ stdenv.mkDerivation (finalAttrs: {
     "-DCMAKE_INSTALL_INCLUDEDIR=include"
     "-DCMAKE_INSTALL_LIBDIR=lib"
 
-    "-DSLANG_INCLUDE_TESTS=${if finalAttrs.finalPackage.doCheck then "ON" else "OFF"}"
+    (lib.cmakeBool "SLANG_INCLUDE_TESTS" finalAttrs.finalPackage.doCheck)
   ];
 
   __structuredAttrs = true;
