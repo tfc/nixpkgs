@@ -311,7 +311,7 @@ let
             "-DENABLED_LOCAL_INFILE=OFF"
             "-DWITH_READLINE=ON"
             "-DWITH_EXTRA_CHARSETS=all"
-            "-DWITH_EMBEDDED_SERVER=${if withEmbedded then "ON" else "OFF"}"
+            (lib.cmakeBool "WITH_EMBEDDED_SERVER" withEmbedded)
             "-DWITH_UNIT_TESTS=OFF"
             "-DWITH_WSREP=ON"
             "-DWITH_INNODB_DISALLOW_WRITES=ON"
