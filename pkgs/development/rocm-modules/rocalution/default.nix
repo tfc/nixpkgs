@@ -69,7 +69,7 @@ stdenv.mkDerivation (finalAttrs: {
     "-DSUPPORT_HIP=ON"
     "-DSUPPORT_OMP=ON"
     "-DSUPPORT_MPI=ON"
-    "-DBUILD_CLIENTS_SAMPLES=${if buildSamples then "ON" else "OFF"}"
+    (lib.cmakeBool "BUILD_CLIENTS_SAMPLES" buildSamples)
     # Manually define CMAKE_INSTALL_<DIR>
     # See: https://github.com/NixOS/nixpkgs/pull/197838
     "-DCMAKE_INSTALL_BINDIR=bin"
