@@ -57,8 +57,8 @@ stdenv.mkDerivation (finalAttrs: {
   ++ lib.optional snappySupport snappy;
 
   cmakeFlags = [
-    "-DBUILD_STATIC=${if static then "ON" else "OFF"}"
-    "-DBUILD_SHARED=${if static then "OFF" else "ON"}"
+    (lib.cmakeBool "BUILD_STATIC" static)
+    (lib.cmakeBool "BUILD_SHARED" (!static))
 
     "-DPREFER_EXTERNAL_LZ4=ON"
     "-DPREFER_EXTERNAL_ZLIB=ON"
@@ -66,7 +66,7 @@ stdenv.mkDerivation (finalAttrs: {
 
     "-DBUILD_EXAMPLES=OFF"
     "-DBUILD_BENCHMARKS=OFF"
-    "-DBUILD_TESTS=${if finalAttrs.finalPackage.doCheck then "ON" else "OFF"}"
+    (lib.cmakeBool "BUILD_TESTS" finalAttrs.finalPackage.doCheck)
   ]
   ++ lib.optional snappySupport "-DDEACTIVATE_SNAPPY=OFF";
 
