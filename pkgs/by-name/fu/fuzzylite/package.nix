@@ -36,7 +36,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   cmakeFlags = [
     "-DFL_BUILD_TESTS:BOOL=OFF"
-    "-DFL_USE_FLOAT:BOOL=${if useFloat then "ON" else "OFF"}"
+    (lib.cmakeBool "FL_USE_FLOAT" useFloat)
   ];
 
   # use unstable as latest release does not yet support cmake-4
