@@ -46,9 +46,9 @@ stdenv.mkDerivation (finalAttrs: {
   env.NIX_CFLAGS_COMPILE = "-Wno-error=unterminated-string-initialization";
 
   cmakeFlags = [
-    "-DBUILD_CLI=${if cliSupport then "ON" else "OFF"}"
-    "-DDISABLE_HTTP=${if httpSupport then "OFF" else "ON"}"
-    "-DDISABLE_LINENOISE=${if linenoiseSupport then "OFF" else "ON"}"
+    (lib.cmakeBool "BUILD_CLI" cliSupport)
+    (lib.cmakeBool "DISABLE_HTTP" (!httpSupport))
+    (lib.cmakeBool "DISABLE_LINENOISE" (!linenoiseSupport))
   ]
   ++ lib.optionals enableLTO [
     # TODO: LTO with LLVM
