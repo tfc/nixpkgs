@@ -66,16 +66,14 @@ stdenv.mkDerivation (finalAttrs: {
       tests/playTests.sh
   '';
 
-  cmakeFlags =
-    lib.attrsets.mapAttrsToList (name: value: "-DZSTD_${name}:BOOL=${if value then "ON" else "OFF"}")
-      {
-        BUILD_SHARED = !static;
-        BUILD_STATIC = enableStatic;
-        BUILD_CONTRIB = buildContrib;
-        PROGRAMS_LINK_SHARED = !static;
-        LEGACY_SUPPORT = legacySupport;
-        BUILD_TESTS = doCheck;
-      };
+  cmakeFlags = lib.attrsets.mapAttrsToList (name: lib.cmakeBool "ZSTD_${name}") {
+    BUILD_SHARED = !static;
+    BUILD_STATIC = enableStatic;
+    BUILD_CONTRIB = buildContrib;
+    PROGRAMS_LINK_SHARED = !static;
+    LEGACY_SUPPORT = legacySupport;
+    BUILD_TESTS = doCheck;
+  };
 
   cmakeDir = "../build/cmake";
   dontUseCmakeBuildDir = true;
