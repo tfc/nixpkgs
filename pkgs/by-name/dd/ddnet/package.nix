@@ -91,7 +91,7 @@ stdenv.mkDerivation rec {
 
   cmakeFlags = [
     "-DAUTOUPDATE=OFF"
-    "-DCLIENT=${if buildClient then "ON" else "OFF"}"
+    (lib.cmakeBool "CLIENT" buildClient)
   ];
 
   # Tests loop forever on Darwin for some reason
