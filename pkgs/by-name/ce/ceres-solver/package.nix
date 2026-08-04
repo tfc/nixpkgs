@@ -41,7 +41,7 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   cmakeFlags = [
-    "-DBUILD_SHARED_LIBS=${if enableStatic then "OFF" else "ON"}"
+    (lib.cmakeBool "BUILD_SHARED_LIBS" (!enableStatic))
   ];
 
   # The Basel BUILD file conflicts with the cmake build directory on
