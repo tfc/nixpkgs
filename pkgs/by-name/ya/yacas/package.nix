@@ -30,8 +30,8 @@ stdenv.mkDerivation (finalAttrs: {
 
   cmakeFlags = [
     "-DENABLE_CYACAS_GUI=OFF"
-    "-DENABLE_CYACAS_KERNEL=${if enableJupyter then "ON" else "OFF"}"
-    "-DENABLE_JYACAS=${if enableJava then "ON" else "OFF"}"
+    (lib.cmakeBool "ENABLE_CYACAS_KERNEL" enableJupyter)
+    (lib.cmakeBool "ENABLE_JYACAS" enableJava)
     "-DENABLE_CYACAS_UNIT_TESTS=ON"
   ];
   patches = [
