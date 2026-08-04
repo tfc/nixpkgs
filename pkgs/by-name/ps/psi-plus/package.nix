@@ -52,8 +52,8 @@ stdenv.mkDerivation rec {
 
   cmakeFlags = [
     "-DCHAT_TYPE=${chatType}"
-    "-DENABLE_PLUGINS=${if enablePlugins then "ON" else "OFF"}"
-    "-DBUILD_PSIMEDIA=${if enablePsiMedia then "ON" else "OFF"}"
+    (lib.cmakeBool "ENABLE_PLUGINS" enablePlugins)
+    (lib.cmakeBool "BUILD_PSIMEDIA" enablePsiMedia)
     "-DUSE_QT6=ON"
   ];
 
