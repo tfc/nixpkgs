@@ -95,7 +95,7 @@ stdenv.mkDerivation (finalAttrs: {
   );
 
   cmakeFlags = [
-    "-DCLIENT=${if buildClient then "ON" else "OFF"}"
+    (lib.cmakeBool "CLIENT" buildClient)
   ];
 
   postInstall = lib.optionalString buildClient (
