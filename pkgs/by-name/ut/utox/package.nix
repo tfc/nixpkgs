@@ -58,7 +58,7 @@ stdenv.mkDerivation rec {
 
   cmakeFlags = [
     "-DENABLE_AUTOUPDATE=OFF"
-    "-DENABLE_TESTS=${if doCheck then "ON" else "OFF"}"
+    (lib.cmakeBool "ENABLE_TESTS" doCheck)
   ];
 
   postPatch = ''
