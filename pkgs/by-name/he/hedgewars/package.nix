@@ -75,7 +75,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   cmakeFlags = [
     "-DNOVERSIONINFOUPDATE=ON"
-    "-DNOSERVER=${if withServer then "OFF" else "ON"}"
+    (lib.cmakeBool "NOSERVER" (!withServer))
   ];
 
   env.NIX_LDFLAGS = lib.concatMapStringsSep " " (e: "-rpath ${e}/lib") [
