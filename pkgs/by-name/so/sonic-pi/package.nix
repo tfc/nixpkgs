@@ -112,8 +112,8 @@ stdenv.mkDerivation (finalAttrs: {
 
   cmakeFlags = [
     "-DUSE_SYSTEM_LIBS=ON"
-    "-DBUILD_IMGUI_INTERFACE=${if withImGui then "ON" else "OFF"}"
-    "-DWITH_QT_GUI_WEBENGINE=${if withTauWidget then "ON" else "OFF"}"
+    (lib.cmakeBool "BUILD_IMGUI_INTERFACE" withImGui)
+    (lib.cmakeBool "WITH_QT_GUI_WEBENGINE" withTauWidget)
     "-DAPP_INSTALL_ROOT=${placeholder "out"}/app"
   ];
 
