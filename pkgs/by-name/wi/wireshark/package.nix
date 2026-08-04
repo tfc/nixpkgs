@@ -158,10 +158,10 @@ stdenv.mkDerivation (finalAttrs: {
   strictDeps = true;
 
   cmakeFlags = [
-    "-DBUILD_wireshark=${if withQt then "ON" else "OFF"}"
+    (lib.cmakeBool "BUILD_wireshark" withQt)
     # Fix `extcap` and `plugins` paths. See https://bugs.wireshark.org/bugzilla/show_bug.cgi?id=16444
     "-DCMAKE_INSTALL_LIBDIR=lib"
-    "-DENABLE_APPLICATION_BUNDLE=${if isAppBundle then "ON" else "OFF"}"
+    (lib.cmakeBool "ENABLE_APPLICATION_BUNDLE" isAppBundle)
     "-DLEMON_C_COMPILER=cc"
   ]
   ++ lib.optionals (stdenv.buildPlatform != stdenv.hostPlatform) [
