@@ -120,10 +120,8 @@ stdenv.mkDerivation (finalAttrs: {
   );
 
   cmakeFlags = [
-    "-DSERVER_ONLY=${if serverOnly then "ON" else "OFF"}"
-    "-DBUILD_RECORDER=${
-      if (stdenv.hostPlatform.isWindows || stdenv.hostPlatform.isLinux) then "ON" else "OFF"
-    }"
+    (lib.cmakeBool "SERVER_ONLY" serverOnly)
+    (lib.cmakeBool "BUILD_RECORDER" (stdenv.hostPlatform.isWindows || stdenv.hostPlatform.isLinux))
     "-DUSE_SYSTEM_ANGELSCRIPT=ON"
     "-DCHECK_ASSETS=OFF"
     "-DUSE_SYSTEM_WIIUSE=ON"
