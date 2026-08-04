@@ -35,7 +35,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   cmakeFlags = [
     "-DCANONICAL_PREFIXES=ON"
-    "-DBUILD_SHARED_LIBS=${if static then "OFF" else "ON"}"
+    (lib.cmakeBool "BUILD_SHARED_LIBS" (!static))
   ]
   ++ lib.optional static "-DCMAKE_SKIP_RPATH:BOOL=TRUE";
 
