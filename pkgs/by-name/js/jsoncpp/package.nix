@@ -45,11 +45,11 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   cmakeFlags = [
-    "-DJSONCPP_USE_SECURE_MEMORY=${if secureMemory then "ON" else "OFF"}"
+    (lib.cmakeBool "JSONCPP_USE_SECURE_MEMORY" secureMemory)
     "-DBUILD_SHARED_LIBS=ON"
     "-DBUILD_OBJECT_LIBS=OFF"
     "-DJSONCPP_WITH_CMAKE_PACKAGE=ON"
-    "-DBUILD_STATIC_LIBS=${if enableStatic then "ON" else "OFF"}"
+    (lib.cmakeBool "BUILD_STATIC_LIBS" enableStatic)
   ]
   # the test's won't compile if secureMemory is used because there is no
   # comparison operators and conversion functions between
