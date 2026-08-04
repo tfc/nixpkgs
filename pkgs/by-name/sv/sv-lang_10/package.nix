@@ -39,7 +39,7 @@ stdenv.mkDerivation (finalAttrs: {
   cmakeFlags = [
     "-DCMAKE_INSTALL_INCLUDEDIR=include"
     "-DCMAKE_INSTALL_LIBDIR=lib"
-    "-DSLANG_INCLUDE_TESTS=${if finalAttrs.finalPackage.doCheck then "ON" else "OFF"}"
+    (lib.cmakeBool "SLANG_INCLUDE_TESTS" finalAttrs.finalPackage.doCheck)
     # CIRCT disables threading to avoid a race condition in BS::thread_pool:
     # https://github.com/llvm/circt/blob/firtool-1.147.0/CMakeLists.txt#L579
     # This may be parameterized if other packages depend on this package.
