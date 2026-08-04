@@ -30,7 +30,7 @@ stdenv.mkDerivation {
     # use libcxx via the Cmake find_package interface.
     # The default libcxx stdenv in llvmPackages doesn't provide
     # this and so will fail.
-    "-DENABLE_LIBCXX=${if libcxxCmakeModule then "ON" else "OFF"}"
+    (lib.cmakeBool "ENABLE_LIBCXX" libcxxCmakeModule)
     "-DCPPTOML_BUILD_EXAMPLES=OFF"
   ];
 
