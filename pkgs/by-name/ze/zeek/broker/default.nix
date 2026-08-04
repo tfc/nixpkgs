@@ -78,7 +78,7 @@ stdenv.mkDerivation {
 
   cmakeFlags = [
     "-DCAF_ROOT=${caf'}"
-    "-DENABLE_STATIC_ONLY:BOOL=${if stdenv.hostPlatform.isStatic then "ON" else "OFF"}"
+    (lib.cmakeBool "ENABLE_STATIC_ONLY" stdenv.hostPlatform.isStatic)
     "-DPY_MOD_INSTALL_DIR=${placeholder "py"}/${python3.sitePackages}/"
     "-Dprometheus-cpp_ROOT=${lib.getDev prometheus-cpp}"
   ];
