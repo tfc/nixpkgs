@@ -31,9 +31,9 @@ stdenv.mkDerivation rec {
   buildInputs = lib.optional alsaSupport alsa-lib ++ lib.optional jackSupport libjack2;
 
   cmakeFlags = [
-    "-DRTMIDI_API_ALSA=${if alsaSupport then "ON" else "OFF"}"
-    "-DRTMIDI_API_JACK=${if jackSupport then "ON" else "OFF"}"
-    "-DRTMIDI_API_CORE=${if coremidiSupport then "ON" else "OFF"}"
+    (lib.cmakeBool "RTMIDI_API_ALSA" alsaSupport)
+    (lib.cmakeBool "RTMIDI_API_JACK" jackSupport)
+    (lib.cmakeBool "RTMIDI_API_CORE" coremidiSupport)
   ];
 
   meta = {
