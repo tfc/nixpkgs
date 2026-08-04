@@ -24,7 +24,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   nativeBuildInputs = [ cmake ];
 
-  cmakeFlags = [ "-DBUILD_SHARED_LIBS=${if static then "OFF" else "ON"}" ];
+  cmakeFlags = [ (lib.cmakeBool "BUILD_SHARED_LIBS" (!static)) ];
 
   meta = {
     description = "Cross platform C99 library to get cpu features at runtime";
