@@ -77,7 +77,7 @@ effectiveStdenv.mkDerivation (finalAttrs: {
   ++ lib.optional enableFortran "-DBUILD_ZFORP=ON"
   ++ lib.optional enableOpenMP "-DZFP_WITH_OPENMP=ON"
   ++ lib.optional enablePython "-DBUILD_ZFPY=ON"
-  ++ [ "-DBUILD_UTILITIES=${if enableUtilities then "ON" else "OFF"}" ];
+  ++ [ (lib.cmakeBool "BUILD_UTILITIES" enableUtilities) ];
 
   doCheck = true;
 
