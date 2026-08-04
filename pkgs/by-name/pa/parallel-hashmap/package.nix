@@ -29,7 +29,7 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   cmakeFlags = [
-    "-DPHMAP_BUILD_TESTS=${if finalAttrs.finalPackage.doCheck then "ON" else "OFF"}"
+    (lib.cmakeBool "PHMAP_BUILD_TESTS" finalAttrs.finalPackage.doCheck)
     "-DPHMAP_BUILD_EXAMPLES=OFF"
   ];
 
