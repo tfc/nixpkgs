@@ -44,7 +44,7 @@ stdenv.mkDerivation rec {
 
   cmakeFlags = [
     "-DHEPMC3_CXX_STANDARD=17"
-    "-DHEPMC3_ENABLE_PYTHON=${if withPython then "ON" else "OFF"}"
+    (lib.cmakeBool "HEPMC3_ENABLE_PYTHON" withPython)
   ]
   ++ lib.optionals withPython [
     "-DHEPMC3_PYTHON_VERSIONS=${if python.isPy3k then "3.X" else "2.X"}"
